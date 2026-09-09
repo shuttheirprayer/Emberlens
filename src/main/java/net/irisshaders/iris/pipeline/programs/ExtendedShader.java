@@ -67,10 +67,16 @@ public class ExtendedShader extends ShaderInstance implements ShaderInstanceInte
 	private final BlendModeOverride blendModeOverride;
 	float alphaTest;
 	boolean usesTessellation;
-	Matrix4f tempMatrix4f = new Matrix4f();
-	Matrix3f tempMatrix3f = new Matrix3f();
-	float[] tempFloats = new float[16];
-	float[] tempFloats2 = new float[9];
+	private static final int[] INTENSITY_SWIZZLE = new int[]{GL30C.GL_RED, GL30C.GL_RED, GL30C.GL_RED, GL30C.GL_RED};
+	private static final Matrix4f scratchMatrix4f = new Matrix4f();
+	private static final Matrix3f scratchMatrix3f = new Matrix3f();
+	private static final Matrix4f cachedProjection = new Matrix4f();
+	private static final float[] cachedProjectionInverse = new float[16];
+	private static final Matrix4f cachedModelView = new Matrix4f();
+	private static final float[] cachedModelViewInverse = new float[16];
+	private static final float[] cachedNormalMatrix = new float[9];
+	private static boolean hasCachedProjection;
+	private static boolean hasCachedModelView;
 	private Program geometry, tessControl, tessEval;
 
 	public ExtendedShader(ResourceProvider resourceFactory, String string, VertexFormat vertexFormat, boolean usesTessellation,
@@ -142,7 +148,7 @@ public class ExtendedShader extends ShaderInstance implements ShaderInstanceInte
 
 		if (intensitySwizzle) {
 			IrisRenderSystem.texParameteriv(RenderSystem.getShaderTexture(0), TextureType.TEXTURE_2D.getGlType(), ARBTextureSwizzle.GL_TEXTURE_SWIZZLE_RGBA,
-				new int[]{GL30C.GL_RED, GL30C.GL_RED, GL30C.GL_RED, GL30C.GL_RED});
+				INTENSITY_SWIZZLE);
 		}
 
 		IrisRenderSystem.bindTextureToUnit(TextureType.TEXTURE_2D.getGlType(), IrisSamplers.ALBEDO_TEXTURE_UNIT, RenderSystem.getShaderTexture(0));
@@ -153,7 +159,15 @@ public class ExtendedShader extends ShaderInstance implements ShaderInstanceInte
 
 		if (PROJECTION_MATRIX != null) {
 			if (projectionInverse != null) {
-				projectionInverse.set(tempMatrix4f.set(PROJECTION_MATRIX.getFloatBuffer()).invert().get(tempFloats));
+				scratchMatrix4f.set(PROJECTION_MATRIX.getFloatBuffer());
+
+				if (!hasCachedProjection || !scratchMatrix4f.equals(cachedProjection)) {
+					cachedProjection.set(scratchMatrix4f);
+					scratchMatrix4f.invert().get(cachedProjectionInverse);
+					hasCachedProjection = true;
+				}
+
+				projectionInverse.set(cachedProjectionInverse);
 			}
 		} else {
 			if (projectionInverse != null) {
@@ -161,13 +175,22 @@ public class ExtendedShader extends ShaderInstance implements ShaderInstanceInte
 			}
 		}
 
-		if (MODEL_VIEW_MATRIX != null) {
+		if (MODEL_VIEW_MATRIX != null && (modelViewInverse != null || normalMatrix != null)) {
+			scratchMatrix4f.set(MODEL_VIEW_MATRIX.getFloatBuffer());
+
+			if (!hasCachedModelView || !scratchMatrix4f.equals(cachedModelView)) {
+				cachedModelView.set(scratchMatrix4f);
+				scratchMatrix4f.invert().get(cachedModelViewInverse);
+				scratchMatrix3f.set(cachedModelView).invert().transpose().get(cachedNormalMatrix);
+				hasCachedModelView = true;
+			}
+
 			if (modelViewInverse != null) {
-				modelViewInverse.set(tempMatrix4f.set(MODEL_VIEW_MATRIX.getFloatBuffer()).invert().get(tempFloats));
+				modelViewInverse.set(cachedModelViewInverse);
 			}
 
 			if (normalMatrix != null) {
-				normalMatrix.set(tempMatrix3f.set(tempMatrix4f.set(MODEL_VIEW_MATRIX.getFloatBuffer())).invert().transpose().get(tempFloats2));
+				normalMatrix.set(cachedNormalMatrix);
 			}
 		}
 
