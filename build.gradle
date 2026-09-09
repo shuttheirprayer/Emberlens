@@ -113,6 +113,9 @@ dependencies {
 	modImplementation "com.misanthropy:emberbium-${minecraft_version}:${emberbium_version}"
 	modCompileOnly("maven.modrinth:distanthorizonsapi:3.0.0")
 
+	sodiumCompatibilityCompileOnly("io.github.llamalad7:mixinextras-common:0.3.5")
+	sodiumCompatibilityAnnotationProcessor("io.github.llamalad7:mixinextras-common:0.3.5")
+
 	forgeRuntimeLibrary(implementation(shadow(project(path: ":glsl-relocated", configuration: "bundledJar")))) {
 		transitive = false
 	}
