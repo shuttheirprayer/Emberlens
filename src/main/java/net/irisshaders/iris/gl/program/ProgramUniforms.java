@@ -193,8 +193,8 @@ public class ProgramUniforms {
 	}
 
 	private void updateStage(ImmutableList<Uniform> uniforms) {
-		for (Uniform uniform : uniforms) {
-			uniform.update();
+		for (int i = 0; i < uniforms.size(); i++) {
+			uniforms.get(i).update();
 		}
 	}
 
@@ -238,8 +238,8 @@ public class ProgramUniforms {
 	public void removeListeners() {
 		active = null;
 
-		for (ValueUpdateNotifier notifier : notifiersToReset) {
-			notifier.setListener(null);
+		for (int i = 0; i < notifiersToReset.size(); i++) {
+			notifiersToReset.get(i).setListener(null);
 		}
 	}
 

@@ -34,8 +34,8 @@ public class ProgramImages {
 			initializer = null;
 		}
 
-		for (ImageBinding imageBinding : imageBindings) {
-			imageBinding.update();
+		for (int i = 0; i < imageBindings.size(); i++) {
+			imageBindings.get(i).update();
 		}
 	}
 
