@@ -42,6 +42,7 @@ public class IrisRenderSystem {
 	private static int[] samplers;
 	private static IntBuffer zeroSamplers;
 	private static int highestBoundSampler = -1;
+	private static boolean usesCoherentMemory;
 
 	public static void initRenderer() {
 		if (GL.getCapabilities().OpenGL45) {
@@ -225,7 +226,12 @@ public class IrisRenderSystem {
 		GL45C.glBufferStorage(target, size, flags);
 	}
 
+	public static boolean usesCoherentMemory() {
+		return usesCoherentMemory;
+	}
+
 	public static void bindBufferBase(int target, Integer index, int buffer) {
+		usesCoherentMemory = true;
 		RenderSystem.assertOnRenderThreadOrInit();
 		GL43C.glBindBufferBase(target, index, buffer);
 	}
@@ -250,6 +256,7 @@ public class IrisRenderSystem {
 	}
 
 	public static void bindImageTexture(int unit, int texture, int level, boolean layered, int layer, int access, int format) {
+		usesCoherentMemory = true;
 		RenderSystem.assertOnRenderThreadOrInit();
 		if (GL.getCapabilities().OpenGL42 || GL.getCapabilities().GL_ARB_shader_image_load_store) {
 			GL42C.glBindImageTexture(unit, texture, level, layered, layer, access, format);
