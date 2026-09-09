@@ -7,11 +7,11 @@ license="LGPL-3.0-only"
 modId="oculus"
 version="${version}"
 displayURL = "https://curseforge.com/minecraft/mc-mods/oculus"
-displayName="Oculus"
+displayName="Emberlens"
 logoFile="oculus-logo.png"
 authors="NanoLive, dima_dencep, coderbot, IMS212, Justsnoopy30, FoundationGames"
 description='''
-Unofficial Fork of "Iris", made to work with FML
+Fork of Oculus, the Forge port of Iris shaders. Built to pair with Emberbium.
 '''
 provides = ["iris"]
 
