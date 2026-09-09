@@ -880,6 +880,10 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 				} else {
 					framesSinceShadowRender = 0;
 
+					if (shadowRenderer != null) {
+						shadowRenderer.captureMatrices();
+					}
+
 					// Clear depth first, regardless of any color clearing.
 					shadowRenderTargets.getDepthSourceFb().bind();
 					RenderSystem.clear(GL21C.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);

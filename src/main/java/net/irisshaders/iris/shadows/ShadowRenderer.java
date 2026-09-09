@@ -149,6 +149,20 @@ public class ShadowRenderer {
 		configureSamplingSettings(shadowDirectives);
 	}
 
+	private Matrix4f createShadowProjection() {
+		if (this.fov != null) {
+			// If FOV is not null, the pack wants a perspective based projection matrix. (This is to support legacy packs)
+			return ShadowMatrices.createPerspectiveMatrix(this.fov);
+		}
+
+		return ShadowMatrices.createOrthoMatrix(halfPlaneLength, nearPlane < 0 ? -DHCompat.getRenderDistance() : nearPlane, farPlane < 0 ? DHCompat.getRenderDistance() : farPlane);
+	}
+
+	public void captureMatrices() {
+		MODELVIEW = new Matrix4f(createShadowModelView(this.sunPathRotation, this.intervalSize).last().pose());
+		PROJECTION = createShadowProjection();
+	}
+
 	public static PoseStack createShadowModelView(float sunPathRotation, float intervalSize) {
 		// Determine the camera position
 		Vector3d cameraPos = CameraUniforms.getUnshiftedCameraPosition();
@@ -432,13 +446,7 @@ public class ShadowRenderer {
 
 
 		// Set up our orthographic projection matrix and load it into RenderSystem
-		Matrix4f shadowProjection;
-		if (this.fov != null) {
-			// If FOV is not null, the pack wants a perspective based projection matrix. (This is to support legacy packs)
-			shadowProjection = ShadowMatrices.createPerspectiveMatrix(this.fov);
-		} else {
-			shadowProjection = ShadowMatrices.createOrthoMatrix(halfPlaneLength, nearPlane < 0 ? -DHCompat.getRenderDistance() : nearPlane, farPlane < 0 ? DHCompat.getRenderDistance() : farPlane);
-		}
+		Matrix4f shadowProjection = createShadowProjection();
 
 		IrisRenderSystem.setShadowProjection(shadowProjection);
 
