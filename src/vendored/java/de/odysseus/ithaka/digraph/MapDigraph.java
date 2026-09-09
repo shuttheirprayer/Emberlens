@@ -19,12 +19,12 @@ import it.unimi.dsi.fastutil.objects.Object2IntAVLTreeMap;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMaps;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Set;
@@ -113,7 +113,7 @@ public class MapDigraph<V> implements Digraph<V> {
 			@Override
 			public Map<V, Object2IntMap<V>> create() {
 				if (comparator == null) {
-					return new LinkedHashMap<>(16);
+					return new Object2ObjectLinkedOpenHashMap<>(16);
 				} else {
 					return new TreeMap<>(comparator);
 				}
