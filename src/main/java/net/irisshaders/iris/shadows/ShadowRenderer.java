@@ -58,7 +58,6 @@ public class ShadowRenderer {
 	public static boolean ACTIVE = false;
 	public static List<BlockEntity> visibleBlockEntities;
 	public static int renderDistance;
-	private int framesSinceShadowRender = Integer.MAX_VALUE;
 	public static Matrix4f MODELVIEW;
 	public static Matrix4f PROJECTION;
 	public static Frustum FRUSTUM;
@@ -356,15 +355,6 @@ public class ShadowRenderer {
 		if (IrisVideoSettings.getOverriddenShadowDistance(IrisVideoSettings.shadowDistance) == 0) {
 			return;
 		}
-
-		int interval = Math.max(1, IrisVideoSettings.shadowInterval);
-
-		if (framesSinceShadowRender < interval - 1) {
-			framesSinceShadowRender++;
-			return;
-		}
-
-		framesSinceShadowRender = 0;
 
 		Minecraft client = Minecraft.getInstance();
 

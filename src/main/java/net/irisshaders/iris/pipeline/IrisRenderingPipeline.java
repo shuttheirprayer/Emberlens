@@ -176,6 +176,8 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	private ImmutableList<ClearPass> shadowClearPassesFull;
 	private boolean destroyed = false;
 	private boolean isRenderingWorld;
+	private int framesSinceShadowRender = Integer.MAX_VALUE;
+	private boolean shouldRenderShadowsThisFrame = true;
 	private boolean isMainBound;
 	private boolean shouldBindPBR;
 	private int currentNormalTexture;
@@ -868,31 +870,42 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 					}
 				}
 			} else {
-				// Clear depth first, regardless of any color clearing.
-				shadowRenderTargets.getDepthSourceFb().bind();
-				RenderSystem.clear(GL21C.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
+				int shadowInterval = Math.max(1, IrisVideoSettings.shadowInterval);
 
-				ImmutableList<ClearPass> passes;
+				shouldRenderShadowsThisFrame = shadowRenderTargets.isFullClearRequired()
+					|| framesSinceShadowRender >= shadowInterval - 1;
 
-				for (ComputeProgram computeProgram : shadowComputes) {
-					if (computeProgram != null) {
-						computeProgram.use();
-						customUniforms.push(computeProgram);
-						computeProgram.dispatch(shadowMapResolution, shadowMapResolution);
-					}
-				}
-
-				if (shadowRenderTargets.isFullClearRequired()) {
-					this.shadowClearPasses = ClearPassCreator.createShadowClearPasses(shadowRenderTargets, false, shadowDirectives);
-					this.shadowClearPassesFull = ClearPassCreator.createShadowClearPasses(shadowRenderTargets, true, shadowDirectives);
-					passes = shadowClearPassesFull;
-					shadowRenderTargets.onFullClear();
+				if (!shouldRenderShadowsThisFrame) {
+					framesSinceShadowRender++;
 				} else {
-					passes = shadowClearPasses;
-				}
+					framesSinceShadowRender = 0;
 
-				for (ClearPass clearPass : passes) {
-					clearPass.execute(emptyClearColor);
+					// Clear depth first, regardless of any color clearing.
+					shadowRenderTargets.getDepthSourceFb().bind();
+					RenderSystem.clear(GL21C.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
+
+					ImmutableList<ClearPass> passes;
+
+					for (ComputeProgram computeProgram : shadowComputes) {
+						if (computeProgram != null) {
+							computeProgram.use();
+							customUniforms.push(computeProgram);
+							computeProgram.dispatch(shadowMapResolution, shadowMapResolution);
+						}
+					}
+
+					if (shadowRenderTargets.isFullClearRequired()) {
+						this.shadowClearPasses = ClearPassCreator.createShadowClearPasses(shadowRenderTargets, false, shadowDirectives);
+						this.shadowClearPassesFull = ClearPassCreator.createShadowClearPasses(shadowRenderTargets, true, shadowDirectives);
+						passes = shadowClearPassesFull;
+						shadowRenderTargets.onFullClear();
+					} else {
+						passes = shadowClearPasses;
+					}
+
+					for (ClearPass clearPass : passes) {
+						clearPass.execute(emptyClearColor);
+					}
 				}
 			}
 		}
@@ -1008,7 +1021,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 	@Override
 	public void renderShadows(LevelRendererAccessor worldRenderer, Camera playerCamera) {
-		if (shadowRenderer != null) {
+		if (shadowRenderer != null && shouldRenderShadowsThisFrame) {
 			this.shadowRenderer.renderShadows(worldRenderer, playerCamera);
 		}
 
