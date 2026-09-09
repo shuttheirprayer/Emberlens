@@ -101,6 +101,7 @@ repositories {
 	maven {
 		url "https://maven.neoforged.net/releases"
 	}
+	mavenLocal()
 	mavenCentral()
 }
 
@@ -109,7 +110,7 @@ dependencies {
 	mappings loom.officialMojangMappings()
 	forge "net.neoforged:forge:${minecraft_version}-${forge_version}"
 
-	modImplementation "org.embeddedt:embeddium-${minecraft_version}:${embeddium_version}"
+	modImplementation "com.misanthropy:emberbium-${minecraft_version}:${emberbium_version}"
 	modCompileOnly("maven.modrinth:distanthorizonsapi:3.0.0")
 
 	forgeRuntimeLibrary(implementation(shadow(project(path: ":glsl-relocated", configuration: "bundledJar")))) {

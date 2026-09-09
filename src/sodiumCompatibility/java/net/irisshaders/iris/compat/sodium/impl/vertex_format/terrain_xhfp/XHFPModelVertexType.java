@@ -1,10 +1,12 @@
 package net.irisshaders.iris.compat.sodium.impl.vertex_format.terrain_xhfp;
 
+import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexAttributeBinding;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexAttributeFormat;
 import me.jellysquid.mods.sodium.client.gl.attribute.GlVertexFormat;
 import me.jellysquid.mods.sodium.client.render.chunk.vertex.format.ChunkMeshAttribute;
 import me.jellysquid.mods.sodium.client.render.chunk.vertex.format.ChunkVertexEncoder;
 import me.jellysquid.mods.sodium.client.render.chunk.vertex.format.ChunkVertexType;
+import net.irisshaders.iris.compat.sodium.impl.IrisChunkShaderBindingPoints;
 import net.irisshaders.iris.compat.sodium.impl.vertex_format.IrisChunkMeshAttributes;
 import net.irisshaders.iris.compat.sodium.impl.vertex_format.IrisGlVertexAttributeFormat;
 
@@ -76,5 +78,29 @@ public class XHFPModelVertexType implements ChunkVertexType {
 	@Override
 	public ChunkVertexEncoder getEncoder() {
 		return new XHFPTerrainVertex();
+	}
+
+	@Override
+	public GlVertexAttributeBinding[] getAttributeBindings() {
+		return new GlVertexAttributeBinding[]{
+			new GlVertexAttributeBinding(IrisChunkShaderBindingPoints.ATTRIBUTE_POSITION_ID,
+				VERTEX_FORMAT.getAttribute(ChunkMeshAttribute.POSITION_MATERIAL_MESH)),
+			new GlVertexAttributeBinding(IrisChunkShaderBindingPoints.ATTRIBUTE_COLOR,
+				VERTEX_FORMAT.getAttribute(ChunkMeshAttribute.COLOR_SHADE)),
+			new GlVertexAttributeBinding(IrisChunkShaderBindingPoints.ATTRIBUTE_BLOCK_TEXTURE,
+				VERTEX_FORMAT.getAttribute(ChunkMeshAttribute.BLOCK_TEXTURE)),
+			new GlVertexAttributeBinding(IrisChunkShaderBindingPoints.ATTRIBUTE_LIGHT_TEXTURE,
+				VERTEX_FORMAT.getAttribute(ChunkMeshAttribute.LIGHT_TEXTURE)),
+			new GlVertexAttributeBinding(IrisChunkShaderBindingPoints.MID_BLOCK,
+				VERTEX_FORMAT.getAttribute(IrisChunkMeshAttributes.MID_BLOCK)),
+			new GlVertexAttributeBinding(IrisChunkShaderBindingPoints.BLOCK_ID,
+				VERTEX_FORMAT.getAttribute(IrisChunkMeshAttributes.BLOCK_ID)),
+			new GlVertexAttributeBinding(IrisChunkShaderBindingPoints.MID_TEX_COORD,
+				VERTEX_FORMAT.getAttribute(IrisChunkMeshAttributes.MID_TEX_COORD)),
+			new GlVertexAttributeBinding(IrisChunkShaderBindingPoints.TANGENT,
+				VERTEX_FORMAT.getAttribute(IrisChunkMeshAttributes.TANGENT)),
+			new GlVertexAttributeBinding(IrisChunkShaderBindingPoints.NORMAL,
+				VERTEX_FORMAT.getAttribute(IrisChunkMeshAttributes.NORMAL))
+		};
 	}
 }
