@@ -93,18 +93,22 @@ public class GraphTranslucencyRenderOrderManager implements RenderOrderManager {
 
 	@Override
 	public void reset() {
-		// TODO: Is reallocation efficient?
-		types.clear();
-
 		for (TransparencyType type : TransparencyType.values()) {
-			types.put(type, new MapDigraph<>());
+			Digraph<RenderType> graph = types.get(type);
+
+			if (graph == null || graph.getVertexCount() > 0) {
+				types.put(type, new MapDigraph<>());
+			}
 		}
 	}
 
 	@Override
 	public void resetType(TransparencyType type) {
-		// TODO: Is reallocation efficient?
-		types.put(type, new MapDigraph<>());
+		Digraph<RenderType> graph = types.get(type);
+
+		if (graph == null || graph.getVertexCount() > 0) {
+			types.put(type, new MapDigraph<>());
+		}
 	}
 
 	public List<RenderType> getRenderOrder() {
@@ -117,6 +121,10 @@ public class GraphTranslucencyRenderOrderManager implements RenderOrderManager {
 		List<RenderType> allLayers = new ArrayList<>(layerCount);
 
 		for (Digraph<RenderType> graph : types.values()) {
+			if (graph.getVertexCount() == 0) {
+				continue;
+			}
+
 			// TODO: Make sure that FAS can't become a bottleneck!
 			// Running NP-hard algorithms in a real time rendering loop might not be an amazing idea.
 			// This shouldn't be necessary in sane scenes, though, and if there aren't cycles,
