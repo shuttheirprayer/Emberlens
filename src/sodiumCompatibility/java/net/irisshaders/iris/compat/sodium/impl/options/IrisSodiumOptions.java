@@ -39,6 +39,33 @@ public class IrisSodiumOptions {
 		return maxShadowDistanceSlider;
 	}
 
+	public static OptionImpl<Options, Integer> createShadowIntervalSlider(MinecraftOptionsStorage vanillaOpts) {
+		return OptionImpl.createBuilder(int.class, vanillaOpts)
+			.setName(Component.translatable("options.iris.shadowInterval"))
+			.setTooltip(Component.translatable("options.iris.shadowInterval.sodium_tooltip"))
+			.setControl(option -> new SliderControl(option, 1, 8, 1, IrisSodiumOptions::formatShadowInterval))
+			.setBinding((options, value) -> {
+					IrisVideoSettings.shadowInterval = value;
+					try {
+						Iris.getIrisConfig().save();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				},
+				options -> IrisVideoSettings.shadowInterval)
+			.setImpact(OptionImpact.HIGH)
+			.setEnabled(true)
+			.build();
+	}
+
+	private static Component formatShadowInterval(int value) {
+		if (value <= 1) {
+			return Component.translatable("options.iris.shadowInterval.everyFrame");
+		}
+
+		return Component.translatable("options.iris.shadowInterval.everyNFrames", value);
+	}
+
 	public static OptionImpl<Options, ColorSpace> createColorSpaceButton(MinecraftOptionsStorage vanillaOpts) {
 		OptionImpl<Options, ColorSpace> colorSpace = OptionImpl.createBuilder(ColorSpace.class, vanillaOpts)
 			.setName(Component.translatable("options.iris.colorSpace"))

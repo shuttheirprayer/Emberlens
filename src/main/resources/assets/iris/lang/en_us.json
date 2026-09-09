@@ -62,6 +62,7 @@
   "options.iris.shadowInterval.tooltip": "How often the shadow pass is re-rendered. Every frame is the most accurate and the most expensive; higher values reuse the previous shadow map for that many frames, which can raise frame rates a lot on shader packs with expensive shadows. Shadows will visibly lag behind moving objects and behind the camera as this is raised.",
   "options.iris.shadowInterval.everyFrame": "Every frame",
   "options.iris.shadowInterval.everyNFrames": "Every %s frames",
+  "options.iris.shadowInterval.sodium_tooltip": "How often the shadow pass is re-rendered. Every frame is the most accurate and the most expensive. Higher values reuse the previous shadow map for that many frames, which cuts GPU work a lot on packs with expensive shadows. The cost is that shadows visibly lag behind moving objects and behind the camera.",
   "options.iris.shadowDistance": "Max Shadow Distance",
   "options.iris.shadowDistance.enabled": "Allows you to change the maximum distance for shadows. Terrain and entities beyond this distance will not cast shadows. Lowering the shadow distance can significantly increase performance.",
   "options.iris.shadowDistance.disabled": "Your current shader pack has already set a render distance for shadows; you cannot change it.",
