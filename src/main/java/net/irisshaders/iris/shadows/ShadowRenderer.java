@@ -58,6 +58,7 @@ public class ShadowRenderer {
 	public static boolean ACTIVE = false;
 	public static List<BlockEntity> visibleBlockEntities;
 	public static int renderDistance;
+	private int framesSinceShadowRender = Integer.MAX_VALUE;
 	public static Matrix4f MODELVIEW;
 	public static Matrix4f PROJECTION;
 	public static Frustum FRUSTUM;
@@ -356,6 +357,15 @@ public class ShadowRenderer {
 			return;
 		}
 
+		int interval = Math.max(1, IrisVideoSettings.shadowInterval);
+
+		if (framesSinceShadowRender < interval - 1) {
+			framesSinceShadowRender++;
+			return;
+		}
+
+		framesSinceShadowRender = 0;
+
 		Minecraft client = Minecraft.getInstance();
 
 		levelRenderer.getLevel().getProfiler().popPush("shadows");
@@ -367,8 +377,6 @@ public class ShadowRenderer {
 			renderDistance = IrisVideoSettings.shadowDistance;
 		}
 
-
-		visibleBlockEntities = new ArrayList<>();
 
 		// NB: We store the previous player buffers in order to be able to allow mods rendering entities in the shadow pass (Flywheel) to use the shadow buffers instead.
 		RenderBuffers playerBuffers = levelRenderer.getRenderBuffers();

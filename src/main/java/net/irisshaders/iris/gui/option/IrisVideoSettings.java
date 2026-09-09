@@ -13,6 +13,7 @@ public class IrisVideoSettings {
 	private static final Tooltip DISABLED_TOOLTIP = Tooltip.create(Component.translatable("options.iris.shadowDistance.disabled"));
 	private static final Tooltip ENABLED_TOOLTIP = Tooltip.create(Component.translatable("options.iris.shadowDistance.enabled"));
 	public static int shadowDistance = 32;
+	public static int shadowInterval = 1;
 	public static ColorSpace colorSpace = ColorSpace.SRGB;
 	public static final OptionInstance<Integer> RENDER_DISTANCE = new ShadowDistanceOption<>("options.iris.shadowDistance",
 		mc -> {
@@ -51,6 +52,26 @@ public class IrisVideoSettings {
 		getOverriddenShadowDistance(shadowDistance),
 		integer -> {
 			shadowDistance = integer;
+			try {
+				Iris.getIrisConfig().save();
+			} catch (IOException e) {
+				Iris.logger.fatal("Failed to save config!", e);
+			}
+		});
+
+	public static final OptionInstance<Integer> SHADOW_INTERVAL = new OptionInstance<>("options.iris.shadowInterval",
+		OptionInstance.cachedConstantTooltip(Component.translatable("options.iris.shadowInterval.tooltip")),
+		(arg, i) -> {
+			if (i <= 1) {
+				return Component.translatable("options.generic_value", Component.translatable("options.iris.shadowInterval"), Component.translatable("options.iris.shadowInterval.everyFrame"));
+			}
+
+			return Component.translatable("options.generic_value", Component.translatable("options.iris.shadowInterval"), Component.translatable("options.iris.shadowInterval.everyNFrames", i));
+		},
+		new OptionInstance.IntRange(1, 8),
+		shadowInterval,
+		integer -> {
+			shadowInterval = integer;
 			try {
 				Iris.getIrisConfig().save();
 			} catch (IOException e) {
