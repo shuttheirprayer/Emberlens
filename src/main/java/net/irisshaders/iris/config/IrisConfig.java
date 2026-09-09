@@ -136,7 +136,7 @@ public class IrisConfig {
 		try {
 			IrisVideoSettings.shadowDistance = Integer.parseInt(properties.getProperty("maxShadowRenderDistance", "32"));
 			IrisVideoSettings.colorSpace = ColorSpace.valueOf(properties.getProperty("colorSpace", "SRGB"));
-			IrisVideoSettings.shadowInterval = Math.max(1, Integer.parseInt(properties.getProperty("shadowInterval", "1")));
+			IrisVideoSettings.shadowInterval = Math.min(IrisVideoSettings.MAX_SHADOW_INTERVAL, Math.max(1, Integer.parseInt(properties.getProperty("shadowInterval", "1"))));
 		} catch (IllegalArgumentException e) {
 			Iris.logger.error("Shadow distance setting reset; value is invalid.");
 			IrisVideoSettings.shadowDistance = 32;

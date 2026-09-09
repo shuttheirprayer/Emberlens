@@ -16,6 +16,8 @@ import net.minecraft.network.chat.Component;
 import java.io.IOException;
 
 public class IrisSodiumOptions {
+	private static final int MAX_SHADOW_INTERVAL = 4;
+
 	public static OptionImpl<Options, Integer> createMaxShadowDistanceSlider(MinecraftOptionsStorage vanillaOpts) {
 		OptionImpl<Options, Integer> maxShadowDistanceSlider = OptionImpl.createBuilder(int.class, vanillaOpts)
 			.setName(Component.translatable("options.iris.shadowDistance"))
@@ -43,7 +45,7 @@ public class IrisSodiumOptions {
 		return OptionImpl.createBuilder(int.class, vanillaOpts)
 			.setName(Component.translatable("options.iris.shadowInterval"))
 			.setTooltip(Component.translatable("options.iris.shadowInterval.sodium_tooltip"))
-			.setControl(option -> new SliderControl(option, 1, 8, 1, IrisSodiumOptions::formatShadowInterval))
+			.setControl(option -> new SliderControl(option, 1, MAX_SHADOW_INTERVAL, 1, IrisSodiumOptions::formatShadowInterval))
 			.setBinding((options, value) -> {
 					IrisVideoSettings.shadowInterval = value;
 					try {

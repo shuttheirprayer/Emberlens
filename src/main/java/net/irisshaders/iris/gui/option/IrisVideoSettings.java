@@ -13,6 +13,7 @@ public class IrisVideoSettings {
 	private static final Tooltip DISABLED_TOOLTIP = Tooltip.create(Component.translatable("options.iris.shadowDistance.disabled"));
 	private static final Tooltip ENABLED_TOOLTIP = Tooltip.create(Component.translatable("options.iris.shadowDistance.enabled"));
 	public static int shadowDistance = 32;
+	public static final int MAX_SHADOW_INTERVAL = 4;
 	public static int shadowInterval = 1;
 	public static ColorSpace colorSpace = ColorSpace.SRGB;
 	public static final OptionInstance<Integer> RENDER_DISTANCE = new ShadowDistanceOption<>("options.iris.shadowDistance",
@@ -68,7 +69,7 @@ public class IrisVideoSettings {
 
 			return Component.translatable("options.generic_value", Component.translatable("options.iris.shadowInterval"), Component.translatable("options.iris.shadowInterval.everyNFrames", i));
 		},
-		new OptionInstance.IntRange(1, 8),
+		new OptionInstance.IntRange(1, MAX_SHADOW_INTERVAL),
 		shadowInterval,
 		integer -> {
 			shadowInterval = integer;
