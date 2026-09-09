@@ -26,12 +26,12 @@ import org.lwjgl.system.MemoryUtil;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.Arrays;
 
 /**
  * This class is responsible for abstracting calls to OpenGL and asserting that calls are run on the render thread.
  */
 public class IrisRenderSystem {
-	private static final int[] emptyArray = new int[SamplerLimits.get().getMaxTextureUnits()];
 	private static Matrix4f backupProjection;
 	private static DSAAccess dsaState;
 	private static boolean hasMultibind;
@@ -40,6 +40,8 @@ public class IrisRenderSystem {
 	private static int polygonMode = GL43C.GL_FILL;
 	private static int backupPolygonMode = GL43C.GL_FILL;
 	private static int[] samplers;
+	private static IntBuffer zeroSamplers;
+	private static int highestBoundSampler = -1;
 
 	public static void initRenderer() {
 		if (GL.getCapabilities().OpenGL45) {
@@ -59,6 +61,12 @@ public class IrisRenderSystem {
 		supportsTesselation = GL.getCapabilities().GL_ARB_tessellation_shader || GL.getCapabilities().OpenGL40;
 
 		samplers = new int[SamplerLimits.get().getMaxTextureUnits()];
+		if (zeroSamplers != null) {
+			MemoryUtil.memFree(zeroSamplers);
+		}
+
+		zeroSamplers = MemoryUtil.memCallocInt(samplers.length);
+		highestBoundSampler = -1;
 	}
 
 	public static void getIntegerv(int pname, int[] params) {
@@ -383,20 +391,33 @@ public class IrisRenderSystem {
 		GL33C.glBindSampler(unit, sampler);
 
 		samplers[unit] = sampler;
+
+		if (sampler != 0 && unit > highestBoundSampler) {
+			highestBoundSampler = unit;
+		}
 	}
 
 	public static void unbindAllSamplers() {
-		boolean usedASampler = false;
-		for (int i = 0; i < samplers.length; i++) {
-			if (samplers[i] != 0) {
-				usedASampler = true;
-				if (!hasMultibind) GL33C.glBindSampler(i, 0);
-				samplers[i] = 0;
+		if (highestBoundSampler < 0) {
+			return;
+		}
+
+		int count = highestBoundSampler + 1;
+
+		if (hasMultibind) {
+			zeroSamplers.limit(count);
+			GL45C.glBindSamplers(0, zeroSamplers);
+			zeroSamplers.limit(zeroSamplers.capacity());
+		} else {
+			for (int i = 0; i < count; i++) {
+				if (samplers[i] != 0) {
+					GL33C.glBindSampler(i, 0);
+				}
 			}
 		}
-		if (usedASampler && hasMultibind) {
-			GL45C.glBindSamplers(0, emptyArray);
-		}
+
+		Arrays.fill(samplers, 0, count, 0);
+		highestBoundSampler = -1;
 	}
 
 
