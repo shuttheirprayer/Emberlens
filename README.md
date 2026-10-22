@@ -1,3 +1,11 @@
+# Emberlens
+
+Emberlens is a fork of [Oculus](https://github.com/Asek3/Oculus), the Forge port of [Iris](https://github.com/IrisShaders/Iris). It focuses on performance and fixes.
+
+All credit goes to the original authors. The original Oculus README is kept below.
+
+---
+
 <p align="center">
   <img src="banner.png">
 </p>
@@ -37,9 +45,3 @@ Oculus requires [Rubidium](https://www.curseforge.com/minecraft/mc-mods/rubidium
 
 ## Consider supporting 
 [![Support me on Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dasek3%26type%3Dpatrons&style=for-the-badge)](https://patreon.com/asek3)
-
-# Emberlens
-
-Emberlens is a fork of [Oculus](https://github.com/Asek3/Oculus), the Forge port of [Iris](https://github.com/IrisShaders/Iris). It focuses on performance and fixes.
-
-All credit goes to the original authors.
