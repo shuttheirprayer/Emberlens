@@ -142,6 +142,7 @@ public class ShadowRenderer {
 
 		if (this.buffers instanceof RenderBuffersExt) {
 			this.renderBuffersExt = (RenderBuffersExt) buffers;
+			this.renderBuffersExt.discardOutlines();
 		} else {
 			this.renderBuffersExt = null;
 		}
@@ -579,6 +580,14 @@ public class ShadowRenderer {
 
 		levelRenderer.getLevel().getProfiler().pop();
 		levelRenderer.getLevel().getProfiler().popPush("updatechunks");
+	}
+
+	public void renderSkippedFrame() {
+		if (IrisVideoSettings.getOverriddenShadowDistance(IrisVideoSettings.shadowDistance) == 0) {
+			return;
+		}
+
+		compositeRenderer.renderComputeOnlyPasses();
 	}
 
 	public int renderBlockEntities(MultiBufferSource.BufferSource bufferSource, PoseStack modelView, Camera camera, double cameraX, double cameraY, double cameraZ, float tickDelta, boolean hasEntityFrustum, boolean lightsOnly) {

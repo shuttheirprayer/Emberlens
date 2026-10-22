@@ -1,22 +1,14 @@
-# gradle
-
-.gradle/
+﻿.gradle/
 build/
 out/
 classes/
 
-# eclipse
-
 *.launch
-
-# idea
 
 .idea/
 *.iml
 *.ipr
 *.iws
-
-# vscode
 
 .settings/
 .vscode/
@@ -24,10 +16,42 @@ bin/
 .classpath
 .project
 
-# macos
-
 *.DS_Store
 
-# fabric
-
 run/
+
+.gradle/
+build/
+out/
+bin/
+classes/
+.mixin.out/
+run/
+run-data/
+runs/
+run-*/
+logs/
+*.log
+*.hprof
+*.args
+hs_err_pid*
+crash-reports/
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+.metadata/
+.kotlin/
+.DS_Store
+Thumbs.db
+desktop.ini
+curseforge/
+*.zip
+
+gradlew
+gradlew.bat
+libs/

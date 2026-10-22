@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -60,8 +61,9 @@ public class MixinBufferBuilder_SegmentRendering implements BufferBuilderExt {
 		dupeNextVertex = false;
 	}
 
-	@Inject(method = "endVertex", at = @At("RETURN"))
-	private void batchedentityrendering$onNext(CallbackInfo ci) {
+	@Redirect(method = "endVertex", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/BufferBuilder;ensureVertexCapacity()V", ordinal = 0))
+	private void batchedentityrendering$onNext(BufferBuilder builder) {
+		this.ensureVertexCapacity();
 		if (dupeNextVertex) {
 			dupeNextVertex = false;
 			duplicateLastVertex();

@@ -1,5 +1,6 @@
 package net.irisshaders.batchedentityrendering.mixin;
 
+import net.irisshaders.iris.Iris;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.world.entity.Entity;
@@ -44,6 +45,10 @@ public class MixinLevelRenderer_EntityListSorting {
 		slice = @Slice(from = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBuffers;bufferSource()Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;"),
 			to = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/EntityRenderDispatcher;shouldRender(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/client/renderer/culling/Frustum;DDD)Z")), allow = 1)
 	private Iterator<Entity> batchedentityrendering$sortEntityList(Iterator<Entity> iterator) {
+		if (!Iris.isPackInUseQuick()) {
+			return iterator;
+		}
+
 		// Sort the entity list first in order to allow vanilla's entity batching code to work better.
 		this.level.getProfiler().push("sortEntityList");
 

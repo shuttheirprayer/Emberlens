@@ -1,5 +1,6 @@
 package net.irisshaders.batchedentityrendering.mixin;
 
+import net.irisshaders.batchedentityrendering.impl.DiscardingOutlineBufferSource;
 import net.irisshaders.batchedentityrendering.impl.DrawCallTrackingRenderBuffers;
 import net.irisshaders.batchedentityrendering.impl.FullyBufferedMultiBufferSource;
 import net.irisshaders.batchedentityrendering.impl.MemoryTrackingBuffer;
@@ -22,7 +23,7 @@ public class MixinRenderBuffers implements RenderBuffersExt, MemoryTrackingRende
 	@Unique
 	private final FullyBufferedMultiBufferSource buffered = new FullyBufferedMultiBufferSource();
 	@Unique
-	private final OutlineBufferSource outlineBufferSource = new OutlineBufferSource(buffered);
+	private OutlineBufferSource outlineBufferSource = new OutlineBufferSource(buffered);
 	@Unique
 	private int begins = 0;
 	@Unique
@@ -93,6 +94,12 @@ public class MixinRenderBuffers implements RenderBuffersExt, MemoryTrackingRende
 		if (begins == 0) {
 			buffered.assertWrapStackEmpty();
 		}
+	}
+
+	@Override
+	public void discardOutlines() {
+		((MemoryTrackingBuffer) ((OutlineBufferSourceAccessor) outlineBufferSource).getOutlineBufferSource()).freeAndDeleteBuffer();
+		outlineBufferSource = new DiscardingOutlineBufferSource(buffered);
 	}
 
 	@Override

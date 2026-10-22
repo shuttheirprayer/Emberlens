@@ -40,6 +40,7 @@ public class CustomUniforms implements FunctionContext {
 	private final List<CachedUniform> uniforms = new ArrayList<>();
 	private final List<CachedUniform> uniformOrder;
 	private final Map<Object, Object2IntMap<CachedUniform>> locationMap = new Object2ObjectOpenHashMap<>();
+	private final Map<Object, PushList> pushLists = new Object2ObjectOpenHashMap<>();
 	private final Map<CachedUniform, List<CachedUniform>> dependsOn;
 	private final Map<CachedUniform, List<CachedUniform>> requiredBy;
 
@@ -201,10 +202,13 @@ public class CustomUniforms implements FunctionContext {
 			}
 		}
 		this.locationMap.put(targetHolder, locations);
+		this.pushLists.remove(targetHolder);
 	}
 
 	public void mapholderToPass(LocationalUniformHolder holder, Object pass) {
 		locationMap.put(pass, locationMap.remove(holder));
+		pushLists.remove(holder);
+		pushLists.remove(pass);
 	}
 
 
@@ -215,10 +219,44 @@ public class CustomUniforms implements FunctionContext {
 	}
 
 	public void push(Object pass) {
-		Object2IntMap<CachedUniform> uniforms = this.locationMap.get(pass);
-		if (uniforms != null) {
-			for (Object2IntMap.Entry<CachedUniform> entry : Object2IntMaps.fastIterable(uniforms)) {
-				entry.getKey().pushIfChanged(entry.getIntValue());
+		PushList list = this.pushLists.get(pass);
+		if (list == null) {
+			Object2IntMap<CachedUniform> uniforms = this.locationMap.get(pass);
+			if (uniforms == null) {
+				return;
+			}
+			list = new PushList(uniforms);
+			this.pushLists.put(pass, list);
+		}
+		list.push();
+	}
+
+	private static final class PushList {
+		private final CachedUniform[] uniforms;
+		private final int[] locations;
+		private final int[] pushed;
+
+		private PushList(Object2IntMap<CachedUniform> source) {
+			this.uniforms = new CachedUniform[source.size()];
+			this.locations = new int[source.size()];
+			this.pushed = new int[source.size()];
+			int i = 0;
+			for (Object2IntMap.Entry<CachedUniform> entry : Object2IntMaps.fastIterable(source)) {
+				this.uniforms[i] = entry.getKey();
+				this.locations[i] = entry.getIntValue();
+				this.pushed[i] = -1;
+				i++;
+			}
+		}
+
+		private void push() {
+			for (int i = 0; i < this.uniforms.length; i++) {
+				CachedUniform uniform = this.uniforms[i];
+				int version = uniform.version();
+				if (this.pushed[i] != version) {
+					uniform.push(this.locations[i]);
+					this.pushed[i] = version;
+				}
 			}
 		}
 	}

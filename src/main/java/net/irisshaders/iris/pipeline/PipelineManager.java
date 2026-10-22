@@ -18,6 +18,7 @@ public class PipelineManager {
 	private final Function<NamespacedId, WorldRenderingPipeline> pipelineFactory;
 	private final Map<NamespacedId, WorldRenderingPipeline> pipelinesPerDimension = new HashMap<>();
 	private WorldRenderingPipeline pipeline = new VanillaRenderingPipeline();
+	private Optional<WorldRenderingPipeline> pipelineOptional = Optional.of(pipeline);
 	private int versionCounterForSodiumShaderReload = 0;
 
 	public PipelineManager(Function<NamespacedId, WorldRenderingPipeline> pipelineFactory) {
@@ -25,12 +26,14 @@ public class PipelineManager {
 	}
 
 	public WorldRenderingPipeline preparePipeline(NamespacedId currentDimension) {
-		if (!pipelinesPerDimension.containsKey(currentDimension)) {
+		WorldRenderingPipeline existing = pipelinesPerDimension.get(currentDimension);
+
+		if (existing == null) {
 			SystemTimeUniforms.COUNTER.reset();
 			SystemTimeUniforms.TIMER.reset();
 
 			Iris.logger.info("Creating pipeline for dimension {}", currentDimension);
-			pipeline = pipelineFactory.apply(currentDimension);
+			setPipeline(pipelineFactory.apply(currentDimension));
 			pipelinesPerDimension.put(currentDimension, pipeline);
 
 			if (WorldRenderingSettings.INSTANCE.isReloadRequired()) {
@@ -41,10 +44,15 @@ public class PipelineManager {
 				WorldRenderingSettings.INSTANCE.clearReloadRequired();
 			}
 		} else {
-			pipeline = pipelinesPerDimension.get(currentDimension);
+			setPipeline(existing);
 		}
 
 		return pipeline;
+	}
+
+	private void setPipeline(WorldRenderingPipeline value) {
+		pipeline = value;
+		pipelineOptional = Optional.ofNullable(value);
 	}
 
 	@Nullable
@@ -53,7 +61,7 @@ public class PipelineManager {
 	}
 
 	public Optional<WorldRenderingPipeline> getPipeline() {
-		return Optional.ofNullable(pipeline);
+		return pipelineOptional;
 	}
 
 	/**
@@ -88,7 +96,7 @@ public class PipelineManager {
 		});
 
 		pipelinesPerDimension.clear();
-		pipeline = null;
+		setPipeline(null);
 		versionCounterForSodiumShaderReload++;
 	}
 

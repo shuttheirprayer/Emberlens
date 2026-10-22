@@ -113,6 +113,8 @@ dependencies {
 	modImplementation "com.misanthropy:emberbium-${minecraft_version}:${emberbium_version}"
 	modCompileOnly("maven.modrinth:distanthorizonsapi:3.0.0")
 
+	compileOnly("io.github.llamalad7:mixinextras-common:0.3.5")
+	annotationProcessor("io.github.llamalad7:mixinextras-common:0.3.5")
 	sodiumCompatibilityCompileOnly("io.github.llamalad7:mixinextras-common:0.3.5")
 	sodiumCompatibilityAnnotationProcessor("io.github.llamalad7:mixinextras-common:0.3.5")
 

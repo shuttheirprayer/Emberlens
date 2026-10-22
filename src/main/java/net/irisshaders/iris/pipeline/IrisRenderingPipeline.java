@@ -53,6 +53,7 @@ import net.irisshaders.iris.samplers.IrisSamplers;
 import net.irisshaders.iris.shaderpack.FilledIndirectPointer;
 import net.irisshaders.iris.shaderpack.ImageInformation;
 import net.irisshaders.iris.shaderpack.ShaderPack;
+import net.irisshaders.iris.shaderpack.loading.ProgramGroup;
 import net.irisshaders.iris.shaderpack.loading.ProgramId;
 import net.irisshaders.iris.shaderpack.materialmap.BlockMaterialMapping;
 import net.irisshaders.iris.shaderpack.materialmap.WorldRenderingSettings;
@@ -111,6 +112,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -161,6 +164,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	private final PackDirectives packDirectives;
 	private final Set<GlImage> customImages;
 	private final GlImage[] clearImages;
+	private final GlImage[] frameClearImages;
 	private final ShaderPack pack;
 	private final PackShadowDirectives shadowDirectives;
 	private final DHCompat dhCompat;
@@ -236,6 +240,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		}
 
 		this.clearImages = customImages.stream().filter(GlImage::shouldClear).toArray(GlImage[]::new);
+		this.frameClearImages = Stream.of(clearImages).filter(image -> !writtenOnlyByShadowPass(programSet, image.getName())).toArray(GlImage[]::new);
 
 		this.particleRenderingSettings = programSet.getPackDirectives().getParticleRenderingSettings().orElseGet(() -> {
 			if (programSet.getDeferred().length > 0 && !programSet.getPackDirectives().shouldUseSeparateEntityDraws()) {
@@ -855,7 +860,15 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		Vector4f emptyClearColor = new Vector4f(1.0F);
 
 
-		for (GlImage image : clearImages) {
+		boolean shadowsEnabled = shadowRenderTargets != null
+			&& packDirectives.getShadowDirectives().isShadowEnabled() != OptionalBoolean.FALSE;
+
+		if (shadowsEnabled) {
+			shouldRenderShadowsThisFrame = shadowRenderTargets.isFullClearRequired()
+				|| framesSinceShadowRender >= Math.max(1, IrisVideoSettings.shadowInterval) - 1;
+		}
+
+		for (GlImage image : shadowsEnabled && !shouldRenderShadowsThisFrame ? frameClearImages : clearImages) {
 			ARBClearTexture.glClearTexImage(image.getId(), 0, image.getFormat().getGlFormat(), image.getPixelType().getGlFormat(), (int[]) null);
 		}
 
@@ -870,11 +883,6 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 					}
 				}
 			} else {
-				int shadowInterval = Math.max(1, IrisVideoSettings.shadowInterval);
-
-				shouldRenderShadowsThisFrame = shadowRenderTargets.isFullClearRequired()
-					|| framesSinceShadowRender >= shadowInterval - 1;
-
 				if (!shouldRenderShadowsThisFrame) {
 					framesSinceShadowRender++;
 				} else {
@@ -1025,8 +1033,12 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 	@Override
 	public void renderShadows(LevelRendererAccessor worldRenderer, Camera playerCamera) {
-		if (shadowRenderer != null && shouldRenderShadowsThisFrame) {
-			this.shadowRenderer.renderShadows(worldRenderer, playerCamera);
+		if (shadowRenderer != null) {
+			if (shouldRenderShadowsThisFrame) {
+				this.shadowRenderer.renderShadows(worldRenderer, playerCamera);
+			} else {
+				this.shadowRenderer.renderSkippedFrame();
+			}
 		}
 
 		prepareRenderer.renderAll();
@@ -1322,5 +1334,71 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 	public boolean hasShadowRenderTargets() {
 		return shadowRenderTargets != null;
+	}
+
+	private static boolean writtenOnlyByShadowPass(ProgramSet programSet, String imageName) {
+		Pattern name = Pattern.compile("\b" + Pattern.quote(imageName) + "\b");
+		boolean shadow = false;
+
+		for (ProgramId id : ProgramId.values()) {
+			Optional<ProgramSource> source = programSet.get(id);
+			if (source.isEmpty() || !mentions(source.get(), name)) {
+				continue;
+			}
+			if (id.getGroup() != ProgramGroup.Shadow && id != ProgramId.DhShadow) {
+				return false;
+			}
+			shadow = true;
+		}
+
+		for (ComputeSource compute : programSet.getShadowCompute()) {
+			shadow |= mentions(compute, name);
+		}
+
+		if (!shadow) {
+			return false;
+		}
+
+		for (ProgramSource[] stage : List.of(programSet.getShadowComposite(), programSet.getBegin(), programSet.getPrepare(), programSet.getDeferred(), programSet.getComposite())) {
+			for (ProgramSource source : stage) {
+				if (mentions(source, name)) {
+					return false;
+				}
+			}
+		}
+
+		for (ComputeSource[][] stage : List.of(programSet.getShadowCompCompute(), programSet.getBeginCompute(), programSet.getPrepareCompute(), programSet.getDeferredCompute(), programSet.getCompositeCompute())) {
+			for (ComputeSource[] pass : stage) {
+				for (ComputeSource compute : pass) {
+					if (mentions(compute, name)) {
+						return false;
+					}
+				}
+			}
+		}
+
+		for (ComputeSource[] stage : List.of(programSet.getSetup(), programSet.getFinalCompute())) {
+			for (ComputeSource compute : stage) {
+				if (mentions(compute, name)) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	private static boolean mentions(ProgramSource source, Pattern name) {
+		if (source == null) {
+			return false;
+		}
+
+		return Stream.of(source.getVertexSource(), source.getGeometrySource(), source.getTessControlSource(), source.getTessEvalSource(), source.getFragmentSource())
+			.flatMap(Optional::stream)
+			.anyMatch(text -> name.matcher(text).find());
+	}
+
+	private static boolean mentions(ComputeSource source, Pattern name) {
+		return source != null && source.getSource().map(text -> name.matcher(text).find()).orElse(false);
 	}
 }

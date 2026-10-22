@@ -15,6 +15,7 @@ public abstract class CachedUniform implements VariableExpression {
 	private final String name;
 	private final UniformUpdateFrequency updateFrequency;
 	private boolean changed = true;
+	private int version;
 
 	public CachedUniform(String name, UniformUpdateFrequency updateFrequency) {
 		this.name = name;
@@ -64,7 +65,9 @@ public abstract class CachedUniform implements VariableExpression {
 	}
 
 	public void update() {
-		doUpdate();
+		if (doUpdate()) {
+			this.version++;
+		}
 		// TODO: Works around a logic error / architectural flaw - there's no way to
 		//       know when a uniform has been uploaded to all programs, so we can never
 		//       safely change this to false with the current design.
@@ -74,6 +77,10 @@ public abstract class CachedUniform implements VariableExpression {
 	protected abstract boolean doUpdate();
 
 	public abstract void push(int location);
+
+	public int version() {
+		return this.version;
+	}
 
 	public void pushIfChanged(int location) {
 		if (this.changed)

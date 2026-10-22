@@ -180,6 +180,33 @@ public class ShadowCompositeRenderer {
 		return this.flippedAtLeastOnceFinal;
 	}
 
+	public void renderComputeOnlyPasses() {
+		boolean ranCompute = false;
+
+		for (Pass renderPass : passes) {
+			if (!(renderPass instanceof ComputeOnlyPass)) {
+				continue;
+			}
+
+			for (ComputeProgram computeProgram : renderPass.computes) {
+				if (computeProgram != null) {
+					ranCompute = true;
+					computeProgram.use();
+					this.customUniforms.push(computeProgram);
+					com.mojang.blaze3d.pipeline.RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+					computeProgram.dispatch(main.width, main.height);
+					IrisRenderSystem.memoryBarrier(GL43C.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL43C.GL_TEXTURE_FETCH_BARRIER_BIT | GL43C.GL_SHADER_STORAGE_BARRIER_BIT);
+				}
+			}
+		}
+
+		if (ranCompute) {
+			Program.unbind();
+			ProgramUniforms.clearActiveUniforms();
+			GlStateManager._glUseProgram(0);
+		}
+	}
+
 	public void renderAll() {
 		RenderSystem.disableBlend();
 

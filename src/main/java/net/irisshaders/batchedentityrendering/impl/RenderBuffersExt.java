@@ -4,4 +4,6 @@ public interface RenderBuffersExt {
 	void beginLevelRendering();
 
 	void endLevelRendering();
+
+	void discardOutlines();
 }
