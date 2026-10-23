@@ -804,11 +804,15 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		return phase;
 	}
 
+	private static final String[] PHASE_LABELS = java.util.Arrays.stream(WorldRenderingPhase.values())
+		.map(value -> StringUtils.capitalize(value.name().toLowerCase(Locale.ROOT).replace("_", " ")))
+		.toArray(String[]::new);
+
 	@Override
 	public void setPhase(WorldRenderingPhase phase) {
 		GLDebug.popGroup();
 		if (phase != WorldRenderingPhase.NONE)
-			GLDebug.pushGroup(phase.ordinal(), StringUtils.capitalize(phase.name().toLowerCase(Locale.ROOT).replace("_", " ")));
+			GLDebug.pushGroup(phase.ordinal(), PHASE_LABELS[phase.ordinal()]);
 		this.phase = phase;
 	}
 
