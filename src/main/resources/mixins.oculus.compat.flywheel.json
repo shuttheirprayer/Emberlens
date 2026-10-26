@@ -1,0 +1,22 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "plugin": "net.irisshaders.iris.compat.flywheel.mixin.OculusFlywheelCompatMixinPlugin",
+  "package": "net.irisshaders.iris.compat.flywheel.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [
+    "MixinBackends",
+    "MixinCompilation",
+    "MixinInstancedDrawManager",
+    "MixinInstancingPrograms",
+    "MixinMaterialRenderState",
+    "MixinPipelineCompiler",
+    "MixinProgramLinker",
+    "MixinSamplers"
+  ]
+}

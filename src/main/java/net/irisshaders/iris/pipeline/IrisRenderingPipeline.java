@@ -13,6 +13,7 @@ import net.irisshaders.iris.features.FeatureFlags;
 import net.irisshaders.iris.gl.GLDebug;
 import net.irisshaders.iris.gl.IrisRenderSystem;
 import net.irisshaders.iris.gl.blending.AlphaTest;
+import net.irisshaders.iris.gl.blending.AlphaTests;
 import net.irisshaders.iris.gl.blending.BlendModeOverride;
 import net.irisshaders.iris.gl.buffer.ShaderStorageBufferHolder;
 import net.irisshaders.iris.gl.framebuffer.GlFramebuffer;
@@ -86,6 +87,7 @@ import net.irisshaders.iris.uniforms.CapturedRenderingState;
 import net.irisshaders.iris.uniforms.CommonUniforms;
 import net.irisshaders.iris.uniforms.FrameUpdateNotifier;
 import net.irisshaders.iris.uniforms.custom.CustomUniforms;
+import net.irisshaders.iris.vertices.IrisVertexFormats;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.DimensionSpecialEffects;
@@ -116,6 +118,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRenderingPipeline, RenderTargetStateListener {
 	private final RenderTargets renderTargets;
@@ -762,6 +765,41 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		loadedShaders.add(extendedShader);
 
 		return extendedShader;
+	}
+
+	@Nullable
+	public ExtendedShader createFlywheelShader(String name, boolean shadow, UnaryOperator<String> vertexEdit) throws IOException {
+		ProgramId programId = shadow ? ProgramId.Shadow : ProgramId.Block;
+		Optional<ProgramSource> resolved = resolver.resolve(programId);
+		if (resolved.isEmpty() || (shadow && shadowRenderTargets == null)) {
+			return null;
+		}
+		ProgramSource source = resolved.get();
+		GlFramebuffer beforeTranslucent;
+		GlFramebuffer afterTranslucent;
+		Supplier<ImmutableSet<Integer>> flipped;
+		if (shadow) {
+			beforeTranslucent = shadowRenderTargets.createShadowFramebuffer(ImmutableSet.of(), source.getDirectives().hasUnknownDrawBuffers() ? new int[]{0, 1} : source.getDirectives().getDrawBuffers());
+			afterTranslucent = beforeTranslucent;
+			flipped = () -> flippedBeforeShadow;
+		} else {
+			beforeTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterPrepare, source.getDirectives().getDrawBuffers());
+			afterTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterTranslucent, source.getDirectives().getDrawBuffers());
+			flipped = () -> isBeforeTranslucent ? flippedAfterPrepare : flippedAfterTranslucent;
+		}
+		ShaderAttributeInputs inputs = new ShaderAttributeInputs(IrisVertexFormats.ENTITY, false, false, false, false);
+		ExtendedShader shader = ShaderCreator.create(this, name, source, programId, beforeTranslucent, afterTranslucent,
+			AlphaTests.ONE_TENTH_ALPHA, IrisVertexFormats.ENTITY, inputs, updateNotifier, this, flipped, FogMode.PER_VERTEX,
+			false, false, shadow, false, customUniforms, vertexEdit);
+		loadedShaders.add(shader);
+		return shader;
+	}
+
+	public void releaseFlywheelShader(ExtendedShader shader) {
+		if (loadedShaders.remove(shader)) {
+			shader.clear();
+			shader.close();
+		}
 	}
 
 	public void addGbufferOrShadowSamplers(SamplerHolder samplers, ImageHolder images, Supplier<ImmutableSet<Integer>> flipped,

@@ -11,6 +11,8 @@ import net.irisshaders.batchedentityrendering.impl.MemoryTrackingRenderBuffers;
 import net.irisshaders.batchedentityrendering.impl.RenderBuffersExt;
 import net.irisshaders.iris.Iris;
 import net.irisshaders.iris.compat.dh.DHCompat;
+import net.irisshaders.iris.compat.flywheel.FlwShadowPass;
+import net.irisshaders.iris.compat.flywheel.FlywheelCompat;
 import net.irisshaders.iris.gl.IrisRenderSystem;
 import net.irisshaders.iris.gui.option.IrisVideoSettings;
 import net.irisshaders.iris.mixin.LevelRendererAccessor;
@@ -530,6 +532,11 @@ public class ShadowRenderer {
 			fullyBufferedMultiBufferSource.readyUp();
 
 		bufferSource.endBatch();
+
+		if (shouldRenderBlockEntities && FlywheelCompat.LOADED) {
+			FlwShadowPass.render(playerCamera, tickDelta);
+			RenderSystem.disableCull();
+		}
 
 		copyPreTranslucentDepth(levelRenderer);
 

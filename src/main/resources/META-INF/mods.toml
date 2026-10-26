@@ -17,7 +17,8 @@ provides = ["iris"]
 
 [mods."sodium:options"]
 "mixin.features.render.world.sky"=false
-"mixin.features.render.entity"=false
+"mixin.features.render.entity.fast_render"=false
+"mixin.features.render.entity.cull"=false
 "mixin.features.render.gui.font"=false
 
 [[dependencies.oculus]]
