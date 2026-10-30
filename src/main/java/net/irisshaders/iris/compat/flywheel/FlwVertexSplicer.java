@@ -105,6 +105,13 @@ public final class FlwVertexSplicer {
 		main.append("}\n");
 		main.append("void main() {\n");
 		main.append("    _ember_flwMain();\n");
+		main.append("#ifdef FLW_EMBEDDED\n");
+		main.append("    FlwLightAo _ember_light;\n");
+		main.append("    if (flw_light(flw_vertexPos.xyz, flw_vertexNormal, _ember_light)) {\n");
+		main.append("        flw_vertexLight = max(flw_vertexLight, _ember_light.light);\n");
+		main.append("        flw_vertexColor.rgb *= _ember_light.ao;\n");
+		main.append("    }\n");
+		main.append("#endif\n");
 		for (Map.Entry<String, String> input : inputs.entrySet()) {
 			String name = IRIS_ATTRIBUTE.matcher(input.getKey()).replaceAll("_ember_$1");
 			String value = INPUT_VALUES.getOrDefault(input.getKey(), "vec4(0.0)");
