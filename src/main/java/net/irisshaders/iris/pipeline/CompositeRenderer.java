@@ -118,6 +118,7 @@ public class CompositeRenderer {
 			}
 
 			Pass pass = new Pass();
+			pass.name = source.getName();
 			ProgramDirectives directives = source.getDirectives();
 
 			pass.program = createProgram(source, flipped, flippedAtLeastOnceSnapshot, shadowTargetsSupplier);
@@ -253,11 +254,13 @@ public class CompositeRenderer {
 			}
 
 			if (!renderPass.mipmappedBuffers.isEmpty()) {
+				PassTimers.begin(renderPass.name + "_mip");
 				RenderSystem.activeTexture(GL15C.GL_TEXTURE0);
 
 				for (int index : renderPass.mipmappedBuffers) {
 					setupMipmapping(CompositeRenderer.this.renderTargets.get(index), renderPass.stageReadsFromAlt.contains(index));
 				}
+				PassTimers.end();
 			}
 
 			float scaledWidth = renderPass.viewWidth * renderPass.viewportScale.scale();
@@ -277,7 +280,9 @@ public class CompositeRenderer {
 			// program is the identifier for composite :shrug:
 			this.customUniforms.push(renderPass.program);
 
+			PassTimers.begin(renderPass.name);
 			FullScreenQuadRenderer.INSTANCE.renderQuad();
+			PassTimers.end();
 
 			BlendModeOverride.restore();
 		}
@@ -432,6 +437,7 @@ public class CompositeRenderer {
 	}
 
 	private static class Pass {
+		String name = "compute";
 		int[] drawBuffers;
 		int viewWidth;
 		int viewHeight;

@@ -1,5 +1,6 @@
 package net.irisshaders.iris.compat.sodium.mixin.shader_overrides;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import me.jellysquid.mods.sodium.client.gl.device.RenderDevice;
 import me.jellysquid.mods.sodium.client.gl.shader.GlProgram;
@@ -33,6 +34,8 @@ public class MixinShaderChunkRenderer implements ShaderChunkRendererExt {
 	private IrisChunkProgramOverrides irisChunkProgramOverrides;
 	@Unique
 	private GlProgram<IrisChunkShaderInterface> override;
+	@Unique
+	private boolean ember$depthWriteSkipped;
 	@Shadow(remap = false)
 	private GlProgram<ChunkShaderInterface> activeProgram;
 
@@ -67,6 +70,12 @@ public class MixinShaderChunkRenderer implements ShaderChunkRendererExt {
 
 		override.bind();
 		override.getInterface().setupState();
+
+		if (IrisChunkProgramOverrides.prepassDone && IrisChunkProgramOverrides.prepassSolidNoDepthWrite && !IrisChunkProgramOverrides.prepassActive
+			&& (!pass.supportsFragmentDiscard() || IrisChunkProgramOverrides.prepassCutoutNoDepthWrite) && !pass.isReverseOrder()) {
+			this.ember$depthWriteSkipped = true;
+			GlStateManager._depthMask(false);
+		}
 	}
 
 	@Inject(method = "end", at = @At("HEAD"), remap = false, cancellable = true)
@@ -74,6 +83,11 @@ public class MixinShaderChunkRenderer implements ShaderChunkRendererExt {
 		ProgramUniforms.clearActiveUniforms();
 		ProgramSamplers.clearActiveSamplers();
 		irisChunkProgramOverrides.unbindFramebuffer();
+
+		if (this.ember$depthWriteSkipped) {
+			this.ember$depthWriteSkipped = false;
+			GlStateManager._depthMask(true);
+		}
 
 		if (override != null) {
 			override.getInterface().restore();

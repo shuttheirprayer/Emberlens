@@ -1020,9 +1020,11 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		//     will give you pink reflections and other weirdness if this is zero.
 		Vector4f fogColor = new Vector4f((float) fogColor3.x, (float) fogColor3.y, (float) fogColor3.z, 1.0F);
 
+		PassTimers.begin("clear");
 		for (ClearPass clearPass : passes) {
 			clearPass.execute(fogColor);
 		}
+		PassTimers.end();
 
 		// Make sure to switch back to the main framebuffer. If we forget to do this then our alt buffers might be
 		// cleared to the fog color, which absolutely is not what we want!
@@ -1077,7 +1079,9 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	public void renderShadows(LevelRendererAccessor worldRenderer, Camera playerCamera) {
 		if (shadowRenderer != null) {
 			if (shouldRenderShadowsThisFrame) {
+				PassTimers.begin("shadow");
 				this.shadowRenderer.renderShadows(worldRenderer, playerCamera);
+				PassTimers.end();
 			} else {
 				this.shadowRenderer.renderSkippedFrame();
 			}
@@ -1108,7 +1112,9 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 		// We need to copy the current depth texture so that depthtex2 can contain the depth values for
 		// all non-translucent content excluding the hand, as required.
+		PassTimers.begin("handdepthcopy");
 		renderTargets.copyPreHandDepth();
+		PassTimers.end();
 	}
 
 	@Override
@@ -1121,7 +1127,9 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 		// We need to copy the current depth texture so that depthtex1 can contain the depth values for
 		// all non-translucent content, as required.
+		PassTimers.begin("depthcopy");
 		renderTargets.copyPreTranslucentDepth();
+		PassTimers.end();
 
 		deferredRenderer.renderAll();
 
@@ -1144,7 +1152,10 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	public void finalizeLevelRendering() {
 		isRenderingWorld = false;
 		compositeRenderer.renderAll();
+		PassTimers.begin("final");
 		finalPassRenderer.renderFinalPass();
+		PassTimers.end();
+		PassTimers.frame();
 	}
 
 	@Override
