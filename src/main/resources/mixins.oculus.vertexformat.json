@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_8",
   "client": [
     "MixinBufferBuilder",
+    "MixinBufferBuilder_FastEntityVertex",
     "MixinVertexFormat",
     "MixinVertexFormatElement",
     "block_rendering.MixinBufferBuilder_SeparateAo",

@@ -19,6 +19,10 @@ public interface IrisExtendedBufferBuilder { // TODO OCULUS: Deleted?
 
 	void iris$resetVertexCount();
 
+	int iris$entityPolygonSize();
+
+	void iris$finishEntityPolygon(int end);
+
 	short iris$currentBlock();
 
 	short iris$currentRenderType();

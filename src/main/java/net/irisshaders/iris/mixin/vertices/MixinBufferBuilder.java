@@ -183,6 +183,14 @@ public abstract class MixinBufferBuilder extends DefaultedVertexConsumer impleme
 		}
 		vertexCount = 0;
 
+		iris$finishPolygon(buffer, end, layout, polygonSize);
+
+		return this.elementIndex;
+	}
+
+	@Unique
+	private void iris$finishPolygon(ByteBuffer buffer, int end, ExtendedVertexLayout layout, int polygonSize) {
+		int stride = layout.vertexSize;
 		polygon.setup(buffer, end, stride, polygonSize);
 
 		float midU = 0;
@@ -220,8 +228,16 @@ public abstract class MixinBufferBuilder extends DefaultedVertexConsumer impleme
 				buffer.putInt(base + tangentOffset, tangent);
 			}
 		}
+	}
 
-		return this.elementIndex;
+	@Override
+	public int iris$entityPolygonSize() {
+		return iris$layout == ExtendedVertexLayout.ENTITY ? iris$polygonSize : 0;
+	}
+
+	@Override
+	public void iris$finishEntityPolygon(int end) {
+		iris$finishPolygon(this.buffer, end, ExtendedVertexLayout.ENTITY, iris$polygonSize);
 	}
 
 	@Override

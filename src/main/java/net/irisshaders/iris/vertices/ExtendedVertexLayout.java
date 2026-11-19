@@ -10,6 +10,10 @@ public final class ExtendedVertexLayout {
 	public static final ExtendedVertexLayout ENTITY = new ExtendedVertexLayout(IrisVertexFormats.ENTITY, IrisVertexFormats.ENTITY_ID_ELEMENT, false, false);
 	public static final ExtendedVertexLayout GLYPH = new ExtendedVertexLayout(IrisVertexFormats.GLYPH, IrisVertexFormats.ENTITY_ID_ELEMENT, false, true);
 
+	public static final boolean ENTITY_FAST_LAYOUT = ENTITY.vertexSize == 56 && ENTITY.normalOffset == 32 && ENTITY.idOffset == 36
+		&& ENTITY.midTextureOffset == 42 && ENTITY.tangentOffset == 50;
+	public static boolean fastEntityVertices = true;
+
 	public final int vertexSize;
 	public final int firstPendingElement;
 	public final int[] elementOffsets;
