@@ -75,7 +75,9 @@ public final class FlwVertexSplicer {
 
 		StringBuilder flwBody = new StringBuilder();
 		for (String line : flywheel.split("\n", -1)) {
-			if (VERSION.matcher(line).find()) {
+			Matcher v = VERSION.matcher(line);
+			if (v.find()) {
+				version = Math.max(version, Integer.parseInt(v.group(1)));
 				continue;
 			}
 			if (EXTENSION.matcher(line).find()) {
