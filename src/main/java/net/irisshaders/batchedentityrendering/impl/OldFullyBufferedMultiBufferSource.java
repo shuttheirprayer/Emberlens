@@ -97,7 +97,7 @@ public class OldFullyBufferedMultiBufferSource extends MultiBufferSource.BufferS
 
 			if (activeBuffers.contains(buffer)) {
 				throw new IllegalStateException(
-					"A buffer was simultaneously marked as inactive and as active, something is very wrong...");
+					"A buffer was simultaneously marked as inactive and as active, something is very wrong!");
 			}
 		});
 
