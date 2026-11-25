@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -42,6 +43,21 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 public class ShaderCreator {
+	public static Map<PatchShaderType, String> transform(WorldRenderingPipeline pipeline, String name, ProgramSource source, AlphaTest fallbackAlpha,
+														 ShaderAttributeInputs inputs, boolean isLines, UnaryOperator<String> vertexEdit) {
+		AlphaTest alpha = source.getDirectives().getAlphaTestOverride().orElse(fallbackAlpha);
+		Map<PatchShaderType, String> transformed = new EnumMap<>(TransformPatcher.patchVanilla(
+			name,
+			source.getVertexSource().orElseThrow(RuntimeException::new),
+			source.getGeometrySource().orElse(null),
+			source.getTessControlSource().orElse(null),
+			source.getTessEvalSource().orElse(null),
+			source.getFragmentSource().orElseThrow(RuntimeException::new),
+			alpha, isLines, true, inputs, pipeline.getTextureMap()));
+		transformed.put(PatchShaderType.VERTEX, vertexEdit.apply(transformed.get(PatchShaderType.VERTEX)));
+		return transformed;
+	}
+
 	public static ExtendedShader create(WorldRenderingPipeline pipeline, String name, ProgramSource source, ProgramId programId, GlFramebuffer writingToBeforeTranslucent,
 										GlFramebuffer writingToAfterTranslucent, AlphaTest fallbackAlpha,
 										VertexFormat vertexFormat, ShaderAttributeInputs inputs, FrameUpdateNotifier updateNotifier,
@@ -57,18 +73,21 @@ public class ShaderCreator {
 										IrisRenderingPipeline parent, Supplier<ImmutableSet<Integer>> flipped, FogMode fogMode, boolean isIntensity,
 										boolean isFullbright, boolean isShadowPass, boolean isLines, CustomUniforms customUniforms,
 										UnaryOperator<String> vertexEdit) throws IOException {
+		return create(pipeline, name, source, programId, writingToBeforeTranslucent, writingToAfterTranslucent, fallbackAlpha, vertexFormat, inputs,
+			updateNotifier, parent, flipped, fogMode, isIntensity, isFullbright, isShadowPass, isLines, customUniforms,
+			transform(pipeline, name, source, fallbackAlpha, inputs, isLines, vertexEdit));
+	}
+
+	public static ExtendedShader create(WorldRenderingPipeline pipeline, String name, ProgramSource source, ProgramId programId, GlFramebuffer writingToBeforeTranslucent,
+										GlFramebuffer writingToAfterTranslucent, AlphaTest fallbackAlpha,
+										VertexFormat vertexFormat, ShaderAttributeInputs inputs, FrameUpdateNotifier updateNotifier,
+										IrisRenderingPipeline parent, Supplier<ImmutableSet<Integer>> flipped, FogMode fogMode, boolean isIntensity,
+										boolean isFullbright, boolean isShadowPass, boolean isLines, CustomUniforms customUniforms,
+										Map<PatchShaderType, String> transformed) throws IOException {
 		AlphaTest alpha = source.getDirectives().getAlphaTestOverride().orElse(fallbackAlpha);
 		BlendModeOverride blendModeOverride = source.getDirectives().getBlendModeOverride().orElse(programId.getBlendModeOverride());
 
-		Map<PatchShaderType, String> transformed = TransformPatcher.patchVanilla(
-			name,
-			source.getVertexSource().orElseThrow(RuntimeException::new),
-			source.getGeometrySource().orElse(null),
-			source.getTessControlSource().orElse(null),
-			source.getTessEvalSource().orElse(null),
-			source.getFragmentSource().orElseThrow(RuntimeException::new),
-			alpha, isLines, true, inputs, pipeline.getTextureMap());
-		String vertex = vertexEdit.apply(transformed.get(PatchShaderType.VERTEX));
+		String vertex = transformed.get(PatchShaderType.VERTEX);
 		String geometry = transformed.get(PatchShaderType.GEOMETRY);
 		String tessControl = transformed.get(PatchShaderType.TESS_CONTROL);
 		String tessEval = transformed.get(PatchShaderType.TESS_EVAL);

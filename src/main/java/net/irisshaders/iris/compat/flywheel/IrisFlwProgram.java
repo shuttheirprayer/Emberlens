@@ -13,6 +13,7 @@ import net.minecraft.client.Minecraft;
 
 public final class IrisFlwProgram extends GlProgram {
 	public static final IrisFlwProgram SKIP = new IrisFlwProgram();
+	public static final IrisFlwProgram PENDING = new IrisFlwProgram();
 
 	private static IrisFlwProgram current;
 
@@ -38,7 +39,7 @@ public final class IrisFlwProgram extends GlProgram {
 	}
 
 	public static boolean skipping() {
-		return current == SKIP;
+		return current == SKIP || current == PENDING;
 	}
 
 	public static void finish() {

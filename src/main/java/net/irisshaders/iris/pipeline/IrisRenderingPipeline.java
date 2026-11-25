@@ -13,6 +13,8 @@ import net.irisshaders.iris.features.FeatureFlags;
 import net.irisshaders.iris.gl.GLDebug;
 import net.irisshaders.iris.gl.IrisRenderSystem;
 import net.irisshaders.iris.gl.blending.AlphaTest;
+import net.irisshaders.iris.compat.flywheel.FlwShaderWarmer;
+import net.irisshaders.iris.compat.flywheel.FlywheelCompat;
 import net.irisshaders.iris.gl.blending.AlphaTests;
 import net.irisshaders.iris.gl.blending.BlendModeOverride;
 import net.irisshaders.iris.gl.buffer.ShaderStorageBufferHolder;
@@ -110,6 +112,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
@@ -126,6 +129,8 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	private final CustomUniforms customUniforms;
 	private final ShadowCompositeRenderer shadowCompositeRenderer;
 	private final Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> customTextureMap;
+	private Map<PatchShaderType, String> flywheelBlockPatched;
+	private Map<PatchShaderType, String> flywheelShadowPatched;
 	private final ComputeProgram[] setup;
 	private final boolean separateHardwareSamplers;
 	private final ProgramFallbackResolver resolver;
@@ -551,6 +556,10 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		}
 
 		currentColorSpace = IrisVideoSettings.colorSpace;
+
+		if (FlywheelCompat.LOADED) {
+			FlwShaderWarmer.prepare(this);
+		}
 	}
 
 	private ComputeProgram[] createShadowComputes(ComputeSource[] compute, ProgramSet programSet) {
@@ -768,7 +777,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	}
 
 	@Nullable
-	public ExtendedShader createFlywheelShader(String name, boolean shadow, UnaryOperator<String> vertexEdit) throws IOException {
+	public ExtendedShader createFlywheelShader(String name, boolean shadow, Map<PatchShaderType, String> sources) throws IOException {
 		ProgramId programId = shadow ? ProgramId.Shadow : ProgramId.Block;
 		Optional<ProgramSource> resolved = resolver.resolve(programId);
 		if (resolved.isEmpty() || (shadow && shadowRenderTargets == null)) {
@@ -790,9 +799,28 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		ShaderAttributeInputs inputs = new ShaderAttributeInputs(IrisVertexFormats.ENTITY, false, false, false, false);
 		ExtendedShader shader = ShaderCreator.create(this, name, source, programId, beforeTranslucent, afterTranslucent,
 			AlphaTests.ONE_TENTH_ALPHA, IrisVertexFormats.ENTITY, inputs, updateNotifier, this, flipped, FogMode.PER_VERTEX,
-			false, false, shadow, false, customUniforms, vertexEdit);
+			false, false, shadow, false, customUniforms, sources);
 		loadedShaders.add(shader);
 		return shader;
+	}
+
+	public Map<PatchShaderType, String> flywheelPatched(String name, boolean shadow) {
+		Map<PatchShaderType, String> cached = shadow ? flywheelShadowPatched : flywheelBlockPatched;
+		if (cached != null) {
+			return cached;
+		}
+		Optional<ProgramSource> resolved = resolver.resolve(shadow ? ProgramId.Shadow : ProgramId.Block);
+		if (resolved.isEmpty() || (shadow && shadowRenderTargets == null)) {
+			return null;
+		}
+		ShaderAttributeInputs inputs = new ShaderAttributeInputs(IrisVertexFormats.ENTITY, false, false, false, false);
+		Map<PatchShaderType, String> patched = ShaderCreator.transform(this, name, resolved.get(), AlphaTests.ONE_TENTH_ALPHA, inputs, false, UnaryOperator.identity());
+		if (shadow) {
+			flywheelShadowPatched = patched;
+		} else {
+			flywheelBlockPatched = patched;
+		}
+		return patched;
 	}
 
 	public void releaseFlywheelShader(ExtendedShader shader) {
