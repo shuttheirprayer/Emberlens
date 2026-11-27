@@ -17,11 +17,14 @@ import net.irisshaders.iris.gl.program.ProgramImages;
 import net.irisshaders.iris.gl.program.ProgramSamplers;
 import net.irisshaders.iris.gl.program.ProgramUniforms;
 import net.irisshaders.iris.gl.texture.TextureType;
+import net.irisshaders.iris.mixin.texture.TextureAtlasAccessor;
 import net.irisshaders.iris.pipeline.SodiumTerrainPipeline;
 import net.irisshaders.iris.samplers.IrisSamplers;
 import net.irisshaders.iris.uniforms.CapturedRenderingState;
 import net.irisshaders.iris.uniforms.custom.CustomUniforms;
 import net.irisshaders.iris.vertices.ImmediateState;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -42,6 +45,8 @@ public class IrisChunkShaderInterface extends ChunkShaderInterface {
 	private final GlUniformMatrix4f uniformProjectionMatrixInverse;
 	@Nullable
 	private final GlUniformFloat3v uniformRegionOffset;
+	@Nullable
+	private final GlUniformFloat2v uniformTexCoordShrink;
 	@Nullable
 	private final GlUniformMatrix3f uniformNormalMatrix;
 	@Nullable
@@ -76,6 +81,7 @@ public class IrisChunkShaderInterface extends ChunkShaderInterface {
 		this.uniformProjectionMatrix = contextExt.bindUniformIfPresent("iris_ProjectionMatrix", GlUniformMatrix4f::new);
 		this.uniformProjectionMatrixInverse = contextExt.bindUniformIfPresent("iris_ProjectionMatrixInverse", GlUniformMatrix4f::new);
 		this.uniformRegionOffset = contextExt.bindUniformIfPresent("u_RegionOffset", GlUniformFloat3v::new);
+		this.uniformTexCoordShrink = contextExt.bindUniformIfPresent("u_TexCoordShrink", GlUniformFloat2v::new);
 		this.uniformNormalMatrix = contextExt.bindUniformIfPresent("iris_NormalMatrix", GlUniformMatrix3f::new);
 		this.uniformBlockDrawParameters = contextExt.bindUniformBlockIfPresent("ubo_DrawParameters", 0);
 		this.customUniforms = customUniforms;
@@ -104,6 +110,11 @@ public class IrisChunkShaderInterface extends ChunkShaderInterface {
 		// This is what is expected by the rest of rendering state, failure to do this will cause blurry textures on particles.
 		GlStateManager._activeTexture(GL32C.GL_TEXTURE0 + IrisSamplers.LIGHTMAP_TEXTURE_UNIT);
 		CapturedRenderingState.INSTANCE.setCurrentAlphaTest(alpha);
+
+		if (uniformTexCoordShrink != null) {
+			TextureAtlasAccessor atlas = (TextureAtlasAccessor) Minecraft.getInstance().getTextureManager().getTexture(TextureAtlas.LOCATION_BLOCKS);
+			uniformTexCoordShrink.set(1.0f / (atlas.callGetWidth() * 256.0f), 1.0f / (atlas.callGetHeight() * 256.0f));
+		}
 
 		if (blendModeOverride != null) {
 			blendModeOverride.apply();

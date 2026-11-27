@@ -143,10 +143,11 @@ public class SodiumTransformer {
 			"float _material_mip_bias(uint material) {\n" +
 				"    return ((material >> MATERIAL_USE_MIP_OFFSET) & 1u) != 0u ? 0.0f : -4.0f;\n" +
 				"}",
+			"vec2 _vert_mid_tex_coord();",
 			"void _vert_init() {" +
 				"_vert_position = (vec3(a_PosId.xyz) * 0.00048828125 + -8.0"
 				+ ");" +
-				"_vert_tex_diffuse_coord = (a_TexCoord * " + (1.0f / 32768.0f) + ");" +
+				"_vert_tex_diffuse_coord = (a_TexCoord * " + (1.0f / 32768.0f) + ") + sign(_vert_mid_tex_coord() - a_TexCoord) * u_TexCoordShrink;" +
 				"_vert_tex_light_coord = a_LightCoord;" +
 				"_vert_color = " + separateAo + ";" +
 				"_draw_id = (a_PosId.w >> 8u) & 0xFFu; }",
@@ -162,6 +163,9 @@ public class SodiumTransformer {
 		addIfNotExists(root, t, tree, "a_TexCoord", Type.F32VEC2, StorageQualifier.StorageType.IN);
 		addIfNotExists(root, t, tree, "a_Color", Type.F32VEC4, StorageQualifier.StorageType.IN);
 		addIfNotExists(root, t, tree, "a_LightCoord", Type.I32VEC2, StorageQualifier.StorageType.IN);
+		addIfNotExists(root, t, tree, "mc_midTexCoord", Type.F32VEC2, StorageQualifier.StorageType.IN);
+		tree.parseAndInjectNode(t, ASTInjectionPoint.BEFORE_DECLARATIONS, "uniform vec2 u_TexCoordShrink;");
+		tree.parseAndInjectNode(t, ASTInjectionPoint.END, "vec2 _vert_mid_tex_coord() { return vec2(mc_midTexCoord); }");
 		tree.prependMainFunctionBody(t, "_vert_init();");
 	}
 

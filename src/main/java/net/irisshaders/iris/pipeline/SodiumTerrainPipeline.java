@@ -46,11 +46,13 @@ public class SodiumTerrainPipeline {
 		in ivec2 a_LightCoord;
 		in vec4 a_Color;
 		in vec2 a_TexCoord;
+		in vec2 mc_midTexCoord;
 		in uvec4 a_PosId;
 		uniform mat4 iris_ProjectionMatrix;
 		uniform int fogShape;
 		uniform mat4 iris_ModelViewMatrix;
 		uniform vec3 u_RegionOffset;
+		uniform vec2 u_TexCoordShrink;
 		vec3 _vert_position;
 		vec2 _vert_tex_diffuse_coord;
 		ivec2 _vert_tex_light_coord;
@@ -100,7 +102,7 @@ public class SodiumTerrainPipeline {
 			_vert_position = (vec3(a_PosId.xyz) * 4.8828125E-4f + -8.0f);
 
 		""" +
-		"_vert_tex_diffuse_coord = (a_TexCoord * " + (1.0f / 32768.0f) + ");" +
+		"_vert_tex_diffuse_coord = (a_TexCoord * " + (1.0f / 32768.0f) + ") + sign(mc_midTexCoord - a_TexCoord) * u_TexCoordShrink;" +
 		"""
 				_vert_tex_light_coord = a_LightCoord;
 				_vert_color = a_Color;
