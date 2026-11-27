@@ -61,6 +61,7 @@ public class ShadowRenderer {
 	public static List<BlockEntity> visibleBlockEntities;
 	public static int renderDistance;
 	public static Matrix4f MODELVIEW;
+	public static Vector3d MODELVIEW_CAMERA = new Vector3d();
 	public static Matrix4f PROJECTION;
 	public static Frustum FRUSTUM;
 	private final float halfPlaneLength;
@@ -162,6 +163,7 @@ public class ShadowRenderer {
 	}
 
 	public void captureMatrices() {
+		MODELVIEW_CAMERA = CameraUniforms.getUnshiftedCameraPosition();
 		MODELVIEW = new Matrix4f(createShadowModelView(this.sunPathRotation, this.intervalSize).last().pose());
 		PROJECTION = createShadowProjection();
 	}
@@ -393,6 +395,7 @@ public class ShadowRenderer {
 		setupShadowViewport();
 
 		// Create our camera
+		MODELVIEW_CAMERA = CameraUniforms.getUnshiftedCameraPosition();
 		PoseStack modelView = createShadowModelView(this.sunPathRotation, this.intervalSize);
 		MODELVIEW = new Matrix4f(modelView.last().pose());
 

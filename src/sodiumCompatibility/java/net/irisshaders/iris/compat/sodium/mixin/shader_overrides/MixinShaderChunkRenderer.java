@@ -72,7 +72,7 @@ public class MixinShaderChunkRenderer implements ShaderChunkRendererExt {
 		override.getInterface().setupState();
 
 		if (IrisChunkProgramOverrides.prepassDone && IrisChunkProgramOverrides.prepassSolidNoDepthWrite && !IrisChunkProgramOverrides.prepassActive
-			&& (!pass.supportsFragmentDiscard() || IrisChunkProgramOverrides.prepassCutoutNoDepthWrite) && !pass.isReverseOrder()) {
+			&& !pass.supportsFragmentDiscard() && !pass.isReverseOrder()) {
 			this.ember$depthWriteSkipped = true;
 			GlStateManager._depthMask(false);
 		}

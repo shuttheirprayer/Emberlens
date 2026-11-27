@@ -32,14 +32,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class IrisChunkProgramOverrides {
-	private static final Pattern ALPHA_DISCARD = Pattern.compile("\\.a\\s*<=?\\s*([0-9]*\\.?[0-9]+)[^;{}]{0,24}\\{?\\s*discard");
 	public static boolean depthPrepass = true;
 	public static boolean prepassActive;
 	public static boolean prepassReady;
 	public static boolean prepassSolidNoDepthWrite = true;
-	public static boolean prepassCutoutNoDepthWrite = true;
-	public static float prepassAlphaFloor = 0.0f;
-	public static float prepassAlphaMargin = 0.05f;
 	public static boolean prepassDone;
 	public static boolean prepassSkipBands = true;
 	private static final Pattern VERSION = Pattern.compile("#version\\s+(\\d+)[^\\n]*");
@@ -188,46 +184,25 @@ public class IrisChunkProgramOverrides {
 		return source.substring(0, init) + "invariant gl_Position;\n" + source.substring(init);
 	}
 
-	private static String terrainVertexSource(IrisTerrainPass pass, SodiumTerrainPipeline pipeline) {
-		return (pass == IrisTerrainPass.GBUFFER_SOLID ? pipeline.getTerrainSolidVertexShaderSource() : pipeline.getTerrainCutoutVertexShaderSource()).orElse(null);
-	}
-
-	private static String terrainFragmentSource(IrisTerrainPass pass, SodiumTerrainPipeline pipeline) {
-		return (pass == IrisTerrainPass.GBUFFER_SOLID ? pipeline.getTerrainSolidFragmentShaderSource() : pipeline.getTerrainCutoutFragmentShaderSource()).orElse(null);
-	}
-
-	private static boolean canPrepass(IrisTerrainPass pass, SodiumTerrainPipeline pipeline) {
-		boolean solid = pass == IrisTerrainPass.GBUFFER_SOLID;
-		if ((solid ? pipeline.getTerrainSolidGeometryShaderSource() : pipeline.getTerrainCutoutGeometryShaderSource()).isPresent()
-			|| (solid ? pipeline.getTerrainSolidTessControlShaderSource() : pipeline.getTerrainCutoutTessControlShaderSource()).isPresent()
-			|| (solid ? pipeline.getTerrainSolidTessEvalShaderSource() : pipeline.getTerrainCutoutTessEvalShaderSource()).isPresent()) {
+	private static boolean canPrepass(SodiumTerrainPipeline pipeline) {
+		if (pipeline.getTerrainSolidGeometryShaderSource().isPresent()
+			|| pipeline.getTerrainSolidTessControlShaderSource().isPresent()
+			|| pipeline.getTerrainSolidTessEvalShaderSource().isPresent()) {
 			return false;
 		}
-		String vertex = terrainVertexSource(pass, pipeline);
-		String fragment = terrainFragmentSource(pass, pipeline);
-		return vertex != null && fragment != null && vertex.contains("void _vert_init()") && vertex.contains("_vert_init();")
-			&& !fragment.contains("gl_FragDepth");
+		String vertex = pipeline.getTerrainSolidVertexShaderSource().orElse(null);
+		String fragment = pipeline.getTerrainSolidFragmentShaderSource().orElse(null);
+		return vertex != null && fragment != null && vertex.contains("void _vert_init()")
+			&& !fragment.contains("gl_FragDepth") && !fragment.contains("discard");
 	}
 
 	@Nullable
-	private GlProgram<IrisChunkShaderInterface> createPrepassShader(IrisTerrainPass pass, SodiumTerrainPipeline pipeline, ChunkVertexType vertexType) {
-		String source = withInvariantPosition(terrainVertexSource(pass, pipeline));
+	private GlProgram<IrisChunkShaderInterface> createPrepassShader(SodiumTerrainPipeline pipeline, ChunkVertexType vertexType) {
+		IrisTerrainPass pass = IrisTerrainPass.GBUFFER_SOLID;
+		String source = withInvariantPosition(pipeline.getTerrainSolidVertexShaderSource().orElseThrow());
 		Matcher matcher = VERSION.matcher(source);
-		boolean found = matcher.find();
-		String versionLine = found ? matcher.group() : "#version 330 core";
-		boolean modern = !found || Integer.parseInt(matcher.group(1)) >= 130;
-		int init = source.indexOf("void _vert_init()");
-		source = source.substring(0, init) + (modern ? "out" : "varying") + " vec2 ember_prepassUv;\n" + source.substring(init);
-		source = source.replace("_vert_init();", "_vert_init(); ember_prepassUv = _vert_tex_diffuse_coord;");
+		String fragment = (matcher.find() ? matcher.group() : "#version 330 core") + "\nvoid main() {\n}\n";
 		float reference = getAlphaReference(pass, pipeline);
-		float threshold = Math.max(prepassAlphaFloor, Math.min(Math.max(reference, packDiscardAlpha(terrainFragmentSource(pass, pipeline))) + prepassAlphaMargin, 0.99f));
-		Iris.logger.info("Depth prepass alpha threshold for " + pass + ": " + threshold);
-		String fragment = versionLine + "\n"
-			+ "uniform sampler2D gtexture;\n"
-			+ (modern ? "in" : "varying") + " vec2 ember_prepassUv;\n"
-			+ "void main() {\n"
-			+ "    if (" + (modern ? "texture" : "texture2D") + "(gtexture, ember_prepassUv).a < " + threshold + ") discard;\n"
-			+ "}\n";
 		String name = "sodium-terrain-" + pass.toString().toLowerCase(Locale.ROOT) + "-prepass";
 		GlShader vertShader = new GlShader(ShaderType.VERTEX, new ResourceLocation("iris", name + ".vsh"), source);
 		GlShader fragShader = new GlShader(ShaderType.FRAGMENT, new ResourceLocation("iris", name + ".fsh"), fragment);
@@ -259,26 +234,12 @@ public class IrisChunkProgramOverrides {
 		}
 	}
 
-	private static float packDiscardAlpha(String fragment) {
-		float highest = 0.0f;
-		Matcher matcher = ALPHA_DISCARD.matcher(fragment);
-		while (matcher.find()) {
-			highest = Math.max(highest, Float.parseFloat(matcher.group(1)));
-		}
-		return highest;
-	}
-
 	private void createPrepassShaders(SodiumTerrainPipeline pipeline, ChunkVertexType vertexType) {
-		GlProgram<IrisChunkShaderInterface> solid = createPrepassShader(IrisTerrainPass.GBUFFER_SOLID, pipeline, vertexType);
-		GlProgram<IrisChunkShaderInterface> cutout = solid == null ? null : createPrepassShader(IrisTerrainPass.GBUFFER_CUTOUT, pipeline, vertexType);
-		if (solid == null || cutout == null) {
-			if (solid != null) {
-				solid.delete();
-			}
+		GlProgram<IrisChunkShaderInterface> solid = createPrepassShader(pipeline, vertexType);
+		if (solid == null) {
 			return;
 		}
 		prepassPrograms.put(IrisTerrainPass.GBUFFER_SOLID, solid);
-		prepassPrograms.put(IrisTerrainPass.GBUFFER_CUTOUT, cutout);
 		prepassReady = true;
 	}
 
@@ -430,7 +391,7 @@ public class IrisChunkProgramOverrides {
 		deletePrepassShaders();
 		if (pipeline != null) {
 			pipeline.patchShaders(vertexType);
-			invariantTerrain = canPrepass(IrisTerrainPass.GBUFFER_SOLID, pipeline) && canPrepass(IrisTerrainPass.GBUFFER_CUTOUT, pipeline);
+			invariantTerrain = canPrepass(pipeline);
 			for (IrisTerrainPass pass : IrisTerrainPass.values()) {
 				if (pass.isShadow() && !pipeline.hasShadowPass()) {
 					this.programs.put(pass, null);
@@ -439,7 +400,7 @@ public class IrisChunkProgramOverrides {
 
 				this.programs.put(pass, createShader(pass, pipeline, vertexType));
 			}
-			if (invariantTerrain && this.programs.get(IrisTerrainPass.GBUFFER_SOLID) != null && this.programs.get(IrisTerrainPass.GBUFFER_CUTOUT) != null) {
+			if (invariantTerrain && this.programs.get(IrisTerrainPass.GBUFFER_SOLID) != null) {
 				createPrepassShaders(pipeline, vertexType);
 			}
 		} else {
@@ -484,7 +445,7 @@ public class IrisChunkProgramOverrides {
 			}
 		} else {
 			if (prepassActive && prepassReady && !pass.isReverseOrder()) {
-				return this.prepassPrograms.get(pass.supportsFragmentDiscard() ? IrisTerrainPass.GBUFFER_CUTOUT : IrisTerrainPass.GBUFFER_SOLID);
+				return this.prepassPrograms.get(IrisTerrainPass.GBUFFER_SOLID);
 			}
 			if (pass.supportsFragmentDiscard()) {
 				return this.programs.get(IrisTerrainPass.GBUFFER_CUTOUT);

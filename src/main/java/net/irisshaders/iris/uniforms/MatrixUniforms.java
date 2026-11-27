@@ -6,6 +6,7 @@ import net.irisshaders.iris.shaderpack.properties.PackDirectives;
 import net.irisshaders.iris.shadows.ShadowMatrices;
 import net.irisshaders.iris.shadows.ShadowRenderer;
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
 
 import java.util.function.Supplier;
 
@@ -23,7 +24,9 @@ public final class MatrixUniforms {
 			Matrix4f captured = ShadowRenderer.MODELVIEW;
 
 			if (captured != null) {
-				return captured;
+				Vector3d camera = CameraUniforms.getUnshiftedCameraPosition();
+				Vector3d capturedCamera = ShadowRenderer.MODELVIEW_CAMERA;
+				return new Matrix4f(captured).translate((float) (camera.x - capturedCamera.x), (float) (camera.y - capturedCamera.y), (float) (camera.z - capturedCamera.z));
 			}
 
 			return new Matrix4f(ShadowRenderer.createShadowModelView(directives.getSunPathRotation(), directives.getShadowDirectives().getIntervalSize()).last().pose());

@@ -44,7 +44,6 @@ public abstract class MixinSodiumWorldRendererDepthPrepass {
 		IrisChunkProgramOverrides.prepassActive = true;
 		try {
 			this.renderSectionManager.renderLayer(matrices, DefaultTerrainRenderPasses.SOLID, x, y, z);
-			this.renderSectionManager.renderLayer(matrices, DefaultTerrainRenderPasses.CUTOUT, x, y, z);
 			IrisChunkProgramOverrides.prepassDone = true;
 		} finally {
 			IrisChunkProgramOverrides.prepassActive = false;

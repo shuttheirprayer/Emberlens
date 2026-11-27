@@ -63,19 +63,17 @@ public class ShaderCreator {
 										VertexFormat vertexFormat, ShaderAttributeInputs inputs, FrameUpdateNotifier updateNotifier,
 										IrisRenderingPipeline parent, Supplier<ImmutableSet<Integer>> flipped, FogMode fogMode, boolean isIntensity,
 										boolean isFullbright, boolean isShadowPass, boolean isLines, CustomUniforms customUniforms) throws IOException {
+		AlphaTest alpha = source.getDirectives().getAlphaTestOverride().orElse(fallbackAlpha);
+		Map<PatchShaderType, String> transformed = TransformPatcher.patchVanilla(
+			name,
+			source.getVertexSource().orElseThrow(RuntimeException::new),
+			source.getGeometrySource().orElse(null),
+			source.getTessControlSource().orElse(null),
+			source.getTessEvalSource().orElse(null),
+			source.getFragmentSource().orElseThrow(RuntimeException::new),
+			alpha, isLines, true, inputs, pipeline.getTextureMap());
 		return create(pipeline, name, source, programId, writingToBeforeTranslucent, writingToAfterTranslucent, fallbackAlpha, vertexFormat, inputs,
-			updateNotifier, parent, flipped, fogMode, isIntensity, isFullbright, isShadowPass, isLines, customUniforms, UnaryOperator.identity());
-	}
-
-	public static ExtendedShader create(WorldRenderingPipeline pipeline, String name, ProgramSource source, ProgramId programId, GlFramebuffer writingToBeforeTranslucent,
-										GlFramebuffer writingToAfterTranslucent, AlphaTest fallbackAlpha,
-										VertexFormat vertexFormat, ShaderAttributeInputs inputs, FrameUpdateNotifier updateNotifier,
-										IrisRenderingPipeline parent, Supplier<ImmutableSet<Integer>> flipped, FogMode fogMode, boolean isIntensity,
-										boolean isFullbright, boolean isShadowPass, boolean isLines, CustomUniforms customUniforms,
-										UnaryOperator<String> vertexEdit) throws IOException {
-		return create(pipeline, name, source, programId, writingToBeforeTranslucent, writingToAfterTranslucent, fallbackAlpha, vertexFormat, inputs,
-			updateNotifier, parent, flipped, fogMode, isIntensity, isFullbright, isShadowPass, isLines, customUniforms,
-			transform(pipeline, name, source, fallbackAlpha, inputs, isLines, vertexEdit));
+			updateNotifier, parent, flipped, fogMode, isIntensity, isFullbright, isShadowPass, isLines, customUniforms, transformed);
 	}
 
 	public static ExtendedShader create(WorldRenderingPipeline pipeline, String name, ProgramSource source, ProgramId programId, GlFramebuffer writingToBeforeTranslucent,
