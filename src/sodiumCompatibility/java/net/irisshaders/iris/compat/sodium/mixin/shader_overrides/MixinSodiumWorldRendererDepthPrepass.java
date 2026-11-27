@@ -11,6 +11,7 @@ import net.irisshaders.iris.compat.sodium.impl.shader_overrides.IrisChunkProgram
 import net.irisshaders.iris.pipeline.PassTimers;
 import net.irisshaders.iris.shadows.ShadowRenderingState;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraftforge.fml.loading.LoadingModList;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -24,6 +25,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MixinSodiumWorldRendererDepthPrepass {
 	@Shadow(remap = false)
 	private RenderSectionManager renderSectionManager;
+
+	@Unique
+	private static final boolean ember$voxyLoaded = LoadingModList.get().getModFileById("voxy") != null;
 
 	@Unique
 	private boolean ember$tuning;
@@ -55,7 +59,7 @@ public abstract class MixinSodiumWorldRendererDepthPrepass {
 
 	@Redirect(method = "drawChunkLayer", at = @At(value = "INVOKE", target = "Lorg/embeddedt/embeddium/render/ShaderModBridge;areShadersEnabled()Z"), remap = false, require = 0)
 	private boolean ember$skipBandsAfterPrepass() {
-		return ShaderModBridge.areShadersEnabled() && !(IrisChunkProgramOverrides.prepassDone && IrisChunkProgramOverrides.prepassSkipBands);
+		return ShaderModBridge.areShadersEnabled() && !ember$voxyLoaded && !(IrisChunkProgramOverrides.prepassDone && IrisChunkProgramOverrides.prepassSkipBands);
 	}
 
 	@Inject(method = "drawChunkLayer", at = @At("RETURN"), remap = false)
