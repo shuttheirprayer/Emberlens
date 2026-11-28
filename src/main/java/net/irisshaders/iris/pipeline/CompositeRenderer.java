@@ -102,6 +102,16 @@ public class CompositeRenderer {
 			}
 		});
 
+		try {
+			for (ProgramSource source : sources) {
+				if (source != null && source.isValid()) {
+					PipelineWarmer.composite(TransformPatcher.patchComposite(source.getName(), source.getVertexSource().orElseThrow(NullPointerException::new),
+						source.getGeometrySource().orElse(null), source.getFragmentSource().orElseThrow(NullPointerException::new), textureStage, pipeline.getTextureMap()));
+				}
+			}
+		} catch (RuntimeException ignored) {
+		}
+
 		for (int i = 0; i < sources.length; i++) {
 			ProgramSource source = sources[i];
 

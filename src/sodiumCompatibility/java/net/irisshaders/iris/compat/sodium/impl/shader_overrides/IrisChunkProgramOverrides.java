@@ -16,6 +16,7 @@ import net.irisshaders.iris.gl.blending.AlphaTests;
 import net.irisshaders.iris.gl.blending.BlendModeOverride;
 import net.irisshaders.iris.gl.blending.BufferBlendOverride;
 import net.irisshaders.iris.gl.framebuffer.GlFramebuffer;
+import net.irisshaders.iris.pipeline.PipelineWarmer;
 import net.irisshaders.iris.pipeline.SodiumTerrainPipeline;
 import net.irisshaders.iris.pipeline.WorldRenderingPipeline;
 import net.irisshaders.iris.shadows.ShadowRenderingState;
@@ -39,13 +40,17 @@ public class IrisChunkProgramOverrides {
 	public static boolean prepassDone;
 	public static boolean prepassSkipBands = true;
 	private static final Pattern VERSION = Pattern.compile("#version\\s+(\\d+)[^\\n]*");
+	private static final String[] ATTRIBUTES = {"a_PosId", "a_Color", "a_TexCoord", "a_LightCoord", "mc_Entity", "mc_midTexCoord", "at_tangent", "iris_Normal", "at_midBlock"};
+	private static final int[] LOCATIONS = {IrisChunkShaderBindingPoints.ATTRIBUTE_POSITION_ID, IrisChunkShaderBindingPoints.ATTRIBUTE_COLOR,
+		IrisChunkShaderBindingPoints.ATTRIBUTE_BLOCK_TEXTURE, IrisChunkShaderBindingPoints.ATTRIBUTE_LIGHT_TEXTURE, IrisChunkShaderBindingPoints.BLOCK_ID,
+		IrisChunkShaderBindingPoints.MID_TEX_COORD, IrisChunkShaderBindingPoints.TANGENT, IrisChunkShaderBindingPoints.NORMAL, IrisChunkShaderBindingPoints.MID_BLOCK};
 	private final EnumMap<IrisTerrainPass, GlProgram<IrisChunkShaderInterface>> programs = new EnumMap<>(IrisTerrainPass.class);
 	private final EnumMap<IrisTerrainPass, GlProgram<IrisChunkShaderInterface>> prepassPrograms = new EnumMap<>(IrisTerrainPass.class);
 	private boolean invariantTerrain;
 	private boolean shadersCreated = false;
 	private int versionCounterForSodiumShaderReload = -1;
 
-	private GlShader createVertexShader(IrisTerrainPass pass, SodiumTerrainPipeline pipeline) {
+	private String vertexSource(IrisTerrainPass pass, SodiumTerrainPipeline pipeline) {
 		Optional<String> irisVertexShader;
 
 		if (pass == IrisTerrainPass.SHADOW || pass == IrisTerrainPass.SHADOW_CUTOUT) {
@@ -62,19 +67,13 @@ public class IrisChunkProgramOverrides {
 
 		String source = irisVertexShader.orElse(null);
 
-		if (source == null) {
-			return null;
-		}
-
-		if (invariantTerrain && (pass == IrisTerrainPass.GBUFFER_SOLID || pass == IrisTerrainPass.GBUFFER_CUTOUT)) {
+		if (source != null && invariantTerrain && (pass == IrisTerrainPass.GBUFFER_SOLID || pass == IrisTerrainPass.GBUFFER_CUTOUT)) {
 			source = withInvariantPosition(source);
 		}
-
-		return new GlShader(ShaderType.VERTEX, new ResourceLocation("iris",
-			"sodium-terrain-" + pass.toString().toLowerCase(Locale.ROOT) + ".vsh"), source);
+		return source;
 	}
 
-	private GlShader createGeometryShader(IrisTerrainPass pass, SodiumTerrainPipeline pipeline) {
+	private String geometrySource(IrisTerrainPass pass, SodiumTerrainPipeline pipeline) {
 		Optional<String> irisGeometryShader;
 
 		if (pass == IrisTerrainPass.SHADOW || pass == IrisTerrainPass.SHADOW_CUTOUT) {
@@ -91,15 +90,10 @@ public class IrisChunkProgramOverrides {
 
 		String source = irisGeometryShader.orElse(null);
 
-		if (source == null) {
-			return null;
-		}
-
-		return new GlShader(IrisShaderTypes.GEOMETRY, new ResourceLocation("iris",
-			"sodium-terrain-" + pass.toString().toLowerCase(Locale.ROOT) + ".gsh"), source);
+		return source;
 	}
 
-	private GlShader createTessControlShader(IrisTerrainPass pass, SodiumTerrainPipeline pipeline) {
+	private String tessControlSource(IrisTerrainPass pass, SodiumTerrainPipeline pipeline) {
 		Optional<String> irisTessControlShader;
 
 		if (pass == IrisTerrainPass.SHADOW || pass == IrisTerrainPass.SHADOW_CUTOUT) {
@@ -116,15 +110,10 @@ public class IrisChunkProgramOverrides {
 
 		String source = irisTessControlShader.orElse(null);
 
-		if (source == null) {
-			return null;
-		}
-
-		return new GlShader(IrisShaderTypes.TESS_CONTROL, new ResourceLocation("iris",
-			"sodium-terrain-" + pass.toString().toLowerCase(Locale.ROOT) + ".tcs"), source);
+		return source;
 	}
 
-	private GlShader createTessEvalShader(IrisTerrainPass pass, SodiumTerrainPipeline pipeline) {
+	private String tessEvalSource(IrisTerrainPass pass, SodiumTerrainPipeline pipeline) {
 		Optional<String> irisTessEvalShader;
 
 		if (pass == IrisTerrainPass.SHADOW || pass == IrisTerrainPass.SHADOW_CUTOUT) {
@@ -141,15 +130,10 @@ public class IrisChunkProgramOverrides {
 
 		String source = irisTessEvalShader.orElse(null);
 
-		if (source == null) {
-			return null;
-		}
-
-		return new GlShader(IrisShaderTypes.TESS_EVAL, new ResourceLocation("iris",
-			"sodium-terrain-" + pass.toString().toLowerCase(Locale.ROOT) + ".tes"), source);
+		return source;
 	}
 
-	private GlShader createFragmentShader(IrisTerrainPass pass, SodiumTerrainPipeline pipeline) {
+	private String fragmentSource(IrisTerrainPass pass, SodiumTerrainPipeline pipeline) {
 		Optional<String> irisFragmentShader;
 
 		if (pass == IrisTerrainPass.SHADOW) {
@@ -168,12 +152,21 @@ public class IrisChunkProgramOverrides {
 
 		String source = irisFragmentShader.orElse(null);
 
-		if (source == null) {
-			return null;
-		}
+		return source;
+	}
 
-		return new GlShader(ShaderType.FRAGMENT, new ResourceLocation("iris",
-			"sodium-terrain-" + pass.toString().toLowerCase(Locale.ROOT) + ".fsh"), source);
+	private static GlShader shader(ShaderType type, IrisTerrainPass pass, String extension, String source) {
+		return source == null ? null : new GlShader(type, new ResourceLocation("iris",
+			"sodium-terrain-" + pass.toString().toLowerCase(Locale.ROOT) + extension), source);
+	}
+
+	private void warm(SodiumTerrainPipeline pipeline) {
+		for (IrisTerrainPass pass : IrisTerrainPass.values()) {
+			if (!pass.isShadow() || pipeline.hasShadowPass()) {
+				PipelineWarmer.chunk(vertexSource(pass, pipeline), geometrySource(pass, pipeline), tessControlSource(pass, pipeline),
+					tessEvalSource(pass, pipeline), fragmentSource(pass, pipeline), ATTRIBUTES, LOCATIONS);
+			}
+		}
 	}
 
 	private static String withInvariantPosition(String source) {
@@ -281,11 +274,11 @@ public class IrisChunkProgramOverrides {
 
 	@Nullable
 	private GlProgram<IrisChunkShaderInterface> createShader(IrisTerrainPass pass, SodiumTerrainPipeline pipeline, ChunkVertexType vertexType) {
-		GlShader vertShader = createVertexShader(pass, pipeline);
-		GlShader geomShader = createGeometryShader(pass, pipeline);
-		GlShader tessCShader = createTessControlShader(pass, pipeline);
-		GlShader tessEShader = createTessEvalShader(pass, pipeline);
-		GlShader fragShader = createFragmentShader(pass, pipeline);
+		GlShader vertShader = shader(ShaderType.VERTEX, pass, ".vsh", vertexSource(pass, pipeline));
+		GlShader geomShader = shader(IrisShaderTypes.GEOMETRY, pass, ".gsh", geometrySource(pass, pipeline));
+		GlShader tessCShader = shader(IrisShaderTypes.TESS_CONTROL, pass, ".tcs", tessControlSource(pass, pipeline));
+		GlShader tessEShader = shader(IrisShaderTypes.TESS_EVAL, pass, ".tes", tessEvalSource(pass, pipeline));
+		GlShader fragShader = shader(ShaderType.FRAGMENT, pass, ".fsh", fragmentSource(pass, pipeline));
 		BlendModeOverride blendOverride = getBlendOverride(pass, pipeline);
 		List<BufferBlendOverride> bufferOverrides = getBufferBlendOverride(pass, pipeline);
 		float alpha = getAlphaReference(pass, pipeline);
@@ -392,13 +385,18 @@ public class IrisChunkProgramOverrides {
 		if (pipeline != null) {
 			pipeline.patchShaders(vertexType);
 			invariantTerrain = canPrepass(pipeline);
-			for (IrisTerrainPass pass : IrisTerrainPass.values()) {
-				if (pass.isShadow() && !pipeline.hasShadowPass()) {
-					this.programs.put(pass, null);
-					continue;
-				}
+			warm(pipeline);
+			try {
+				for (IrisTerrainPass pass : IrisTerrainPass.values()) {
+					if (pass.isShadow() && !pipeline.hasShadowPass()) {
+						this.programs.put(pass, null);
+						continue;
+					}
 
-				this.programs.put(pass, createShader(pass, pipeline, vertexType));
+					this.programs.put(pass, createShader(pass, pipeline, vertexType));
+				}
+			} finally {
+				PipelineWarmer.release();
 			}
 			if (invariantTerrain && this.programs.get(IrisTerrainPass.GBUFFER_SOLID) != null) {
 				createPrepassShaders(pipeline, vertexType);

@@ -216,6 +216,8 @@ public class TransformPatcher {
 			// print the offending programs and rethrow to stop the loading process
 			ShaderPrinter.printProgram("errored_" + name).addSources(inputs).print();
 			throw new ShaderCompileException(name, e);
+		} finally {
+			parameters.type = null;
 		}
 	}
 

@@ -120,6 +120,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.function.IntFunction;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -304,6 +305,30 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 		this.shadowComputes = createShadowComputes(programSet.getShadowCompute(), programSet);
 
+		Function<ShaderKey, ShaderInstance> shaders = key -> {
+			try {
+				if (key.isShadow()) {
+					if (shadowRenderTargets != null || PipelineWarmer.capturing()) {
+						return createShadowShader(key.getName(), resolver.resolve(key.getProgram()), key);
+					} else {
+						return null;
+					}
+				} else {
+					return createShader(key.getName(), resolver.resolve(key.getProgram()), key);
+				}
+			} catch (FakeChainedJsonException e) {
+				destroyShaders();
+				throw e.getTrueException();
+			} catch (IOException e) {
+				destroyShaders();
+				throw new RuntimeException(e);
+			} catch (RuntimeException e) {
+				destroyShaders();
+				throw e;
+			}
+		};
+		PipelineWarmer.warm(shaders);
+
 		this.beginRenderer = new CompositeRenderer(this, programSet.getPackDirectives(), programSet.getBegin(), programSet.getBeginCompute(), renderTargets, shaderStorageBufferHolder,
 			customTextureManager.getNoiseTexture(), updateNotifier, centerDepthSampler, flipper, shadowTargetsSupplier, TextureStage.BEGIN,
 			customTextureManager.getCustomTextureIdMap().getOrDefault(TextureStage.BEGIN, Object2ObjectMaps.emptyMap()), customTextureManager.getIrisCustomTextures(), customImages,
@@ -427,28 +452,11 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		this.loadedShaders = new HashSet<>();
 
 
-		this.shaderMap = new ShaderMap(key -> {
-			try {
-				if (key.isShadow()) {
-					if (shadowRenderTargets != null) {
-						return createShadowShader(key.getName(), resolver.resolve(key.getProgram()), key);
-					} else {
-						return null;
-					}
-				} else {
-					return createShader(key.getName(), resolver.resolve(key.getProgram()), key);
-				}
-			} catch (FakeChainedJsonException e) {
-				destroyShaders();
-				throw e.getTrueException();
-			} catch (IOException e) {
-				destroyShaders();
-				throw new RuntimeException(e);
-			} catch (RuntimeException e) {
-				destroyShaders();
-				throw e;
-			}
-		});
+		try {
+			this.shaderMap = new ShaderMap(shaders);
+		} finally {
+			PipelineWarmer.release();
+		}
 
 		WorldRenderingSettings.INSTANCE.setBlockStateIds(
 			BlockMaterialMapping.createBlockStateIdMap(programSet.getPack().getIdMap().getBlockProperties()));
@@ -691,7 +699,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 	private ShaderInstance createShader(String name, Optional<ProgramSource> source, ShaderKey key) throws IOException {
 		if (!source.isPresent()) {
-			return createFallbackShader(name, key);
+			return PipelineWarmer.capturing() ? null : createFallbackShader(name, key);
 		}
 
 		return createShader(name, source.get(), key.getProgram(), key.getAlphaTest(), key.getVertexFormat(), key.getFogMode(),
@@ -706,12 +714,14 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	private ShaderInstance createShader(String name, ProgramSource source, ProgramId programId, AlphaTest fallbackAlpha,
 										VertexFormat vertexFormat, FogMode fogMode,
 										boolean isIntensity, boolean isFullbright, boolean isGlint, boolean isText) throws IOException {
+		boolean isLines = programId == ProgramId.Line && resolver.has(ProgramId.Line);
+		ShaderAttributeInputs inputs = new ShaderAttributeInputs(vertexFormat, isFullbright, isLines, isGlint, isText);
+		if (PipelineWarmer.capturing()) {
+			PipelineWarmer.vanilla(ShaderCreator.patch(this, name, source, fallbackAlpha, inputs, isLines), vertexFormat);
+			return null;
+		}
 		GlFramebuffer beforeTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterPrepare, source.getDirectives().getDrawBuffers());
 		GlFramebuffer afterTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterTranslucent, source.getDirectives().getDrawBuffers());
-		boolean isLines = programId == ProgramId.Line && resolver.has(ProgramId.Line);
-
-
-		ShaderAttributeInputs inputs = new ShaderAttributeInputs(vertexFormat, isFullbright, isLines, isGlint, isText);
 
 		Supplier<ImmutableSet<Integer>> flipped =
 			() -> isBeforeTranslucent ? flippedAfterPrepare : flippedAfterTranslucent;
@@ -740,7 +750,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 	private ShaderInstance createShadowShader(String name, Optional<ProgramSource> source, ShaderKey key) throws IOException {
 		if (!source.isPresent()) {
-			return createFallbackShadowShader(name, key);
+			return PipelineWarmer.capturing() ? null : createFallbackShadowShader(name, key);
 		}
 
 		return createShadowShader(name, source.get(), key.getProgram(), key.getAlphaTest(), key.getVertexFormat(),
@@ -761,10 +771,13 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 	private ShaderInstance createShadowShader(String name, ProgramSource source, ProgramId programId, AlphaTest fallbackAlpha,
 											  VertexFormat vertexFormat, boolean isIntensity, boolean isFullbright, boolean isText) throws IOException {
-		GlFramebuffer framebuffer = shadowRenderTargets.createShadowFramebuffer(ImmutableSet.of(), source.getDirectives().hasUnknownDrawBuffers() ? new int[]{0, 1} : source.getDirectives().getDrawBuffers());
 		boolean isLines = programId == ProgramId.Line && resolver.has(ProgramId.Line);
-
 		ShaderAttributeInputs inputs = new ShaderAttributeInputs(vertexFormat, isFullbright, isLines, false, isText);
+		if (PipelineWarmer.capturing()) {
+			PipelineWarmer.vanilla(ShaderCreator.patch(this, name, source, fallbackAlpha, inputs, isLines), vertexFormat);
+			return null;
+		}
+		GlFramebuffer framebuffer = shadowRenderTargets.createShadowFramebuffer(ImmutableSet.of(), source.getDirectives().hasUnknownDrawBuffers() ? new int[]{0, 1} : source.getDirectives().getDrawBuffers());
 
 		Supplier<ImmutableSet<Integer>> flipped = () -> flippedBeforeShadow;
 

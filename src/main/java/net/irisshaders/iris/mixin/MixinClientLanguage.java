@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -41,7 +41,7 @@ public class MixinClientLanguage {
 	// TODO: Don't make this static. It probably won't break things as-is, but making it an instance variable
 	//       is more resilient.
 	@Unique
-	private static final List<String> languageCodes = new ArrayList<>();
+	private static volatile List<String> languageCodes = List.of();
 
 	@Shadow
 	@Final
@@ -57,11 +57,9 @@ public class MixinClientLanguage {
 
 	@Inject(method = "loadFrom", at = @At("HEAD"))
 	private static void check(ResourceManager resourceManager, List<String> definitions, boolean bl, CallbackInfoReturnable<ClientLanguage> cir) {
-		// Make sure the language codes don't carry over!
-		languageCodes.clear();
-
-		// Reverse order due to how minecraft has English and then the primary language in the language definitions list
-		new LinkedList<>(definitions).descendingIterator().forEachRemaining(languageCodes::add);
+		List<String> codes = new ArrayList<>(definitions);
+		Collections.reverse(codes);
+		languageCodes = codes;
 	}
 
 	@Inject(method = "getOrDefault", at = @At("HEAD"), cancellable = true)

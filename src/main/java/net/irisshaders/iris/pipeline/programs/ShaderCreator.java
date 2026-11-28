@@ -58,13 +58,10 @@ public class ShaderCreator {
 		return transformed;
 	}
 
-	public static ExtendedShader create(WorldRenderingPipeline pipeline, String name, ProgramSource source, ProgramId programId, GlFramebuffer writingToBeforeTranslucent,
-										GlFramebuffer writingToAfterTranslucent, AlphaTest fallbackAlpha,
-										VertexFormat vertexFormat, ShaderAttributeInputs inputs, FrameUpdateNotifier updateNotifier,
-										IrisRenderingPipeline parent, Supplier<ImmutableSet<Integer>> flipped, FogMode fogMode, boolean isIntensity,
-										boolean isFullbright, boolean isShadowPass, boolean isLines, CustomUniforms customUniforms) throws IOException {
+	public static Map<PatchShaderType, String> patch(WorldRenderingPipeline pipeline, String name, ProgramSource source, AlphaTest fallbackAlpha,
+													 ShaderAttributeInputs inputs, boolean isLines) {
 		AlphaTest alpha = source.getDirectives().getAlphaTestOverride().orElse(fallbackAlpha);
-		Map<PatchShaderType, String> transformed = TransformPatcher.patchVanilla(
+		return TransformPatcher.patchVanilla(
 			name,
 			source.getVertexSource().orElseThrow(RuntimeException::new),
 			source.getGeometrySource().orElse(null),
@@ -72,6 +69,14 @@ public class ShaderCreator {
 			source.getTessEvalSource().orElse(null),
 			source.getFragmentSource().orElseThrow(RuntimeException::new),
 			alpha, isLines, true, inputs, pipeline.getTextureMap());
+	}
+
+	public static ExtendedShader create(WorldRenderingPipeline pipeline, String name, ProgramSource source, ProgramId programId, GlFramebuffer writingToBeforeTranslucent,
+										GlFramebuffer writingToAfterTranslucent, AlphaTest fallbackAlpha,
+										VertexFormat vertexFormat, ShaderAttributeInputs inputs, FrameUpdateNotifier updateNotifier,
+										IrisRenderingPipeline parent, Supplier<ImmutableSet<Integer>> flipped, FogMode fogMode, boolean isIntensity,
+										boolean isFullbright, boolean isShadowPass, boolean isLines, CustomUniforms customUniforms) throws IOException {
+		Map<PatchShaderType, String> transformed = patch(pipeline, name, source, fallbackAlpha, inputs, isLines);
 		return create(pipeline, name, source, programId, writingToBeforeTranslucent, writingToAfterTranslucent, fallbackAlpha, vertexFormat, inputs,
 			updateNotifier, parent, flipped, fogMode, isIntensity, isFullbright, isShadowPass, isLines, customUniforms, transformed);
 	}

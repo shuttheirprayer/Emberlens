@@ -117,7 +117,7 @@ public final class FlwShaderWarmer {
 		return new Warm(CompletableFuture.supplyAsync(build, SPLICER));
 	}
 
-	private static boolean parallel() {
+	public static boolean parallel() {
 		if (parallel == null) {
 			RenderSystem.assertOnRenderThread();
 			GLCapabilities caps = GL.getCapabilities();
