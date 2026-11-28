@@ -20,7 +20,8 @@ public class OculusFlywheelCompatMixinPlugin implements IMixinConfigPlugin {
 
 	@Override
 	public boolean shouldApplyMixin(String target, String mixin) {
-		return LoadingModList.get().getModFileById("flywheel") != null;
+		return LoadingModList.get().getModFileById("flywheel") != null
+			&& LoadingModList.get().getModFileById("colorwheel") == null;
 	}
 
 	@Override

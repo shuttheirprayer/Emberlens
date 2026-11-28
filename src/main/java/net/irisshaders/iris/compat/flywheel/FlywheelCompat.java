@@ -5,7 +5,8 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraftforge.fml.loading.LoadingModList;
 
 public final class FlywheelCompat {
-	public static final boolean LOADED = LoadingModList.get().getModFileById("flywheel") != null;
+	public static final boolean LOADED = LoadingModList.get().getModFileById("flywheel") != null
+								      && LoadingModList.get().getModFileById("colorwheel") == null;
 
 	private static final Int2ObjectMap<String> VERTEX_SOURCES = new Int2ObjectOpenHashMap<>();
 	private static final Int2ObjectMap<String> PROGRAM_VERTEX_SOURCES = new Int2ObjectOpenHashMap<>();
